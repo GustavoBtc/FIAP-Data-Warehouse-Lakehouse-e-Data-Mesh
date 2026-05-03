@@ -970,6 +970,159 @@ As perguntas abaixo não têm resposta única, mas têm respostas **melhores** q
 
 ---
 
+## Parte 6 - Destruindo a infraestrutura ao final da aula
+
+### Resultado esperado desta parte
+
+Ao final desta etapa, todos os recursos AWS criados para o Lab 03 (cluster Redshift, bucket S3, Glue Database, Security Group) terão sido removidos da sua conta, zerando o consumo de budget.
+
+> [!CAUTION]
+> **Este passo é obrigatório ao final da aula.** Um cluster Redshift `ra3.large` continua consumindo budget mesmo ocioso, e o Learner Lab tem orçamento limitado — se ultrapassar, sua conta é desativada e **todo o progresso é perdido**.
+
+### Quanto custa deixar a infra ligada
+
+Preços públicos AWS para a região `us-east-1` (valores de referência on-demand, 2026):
+
+| Recurso | Preço unitário | Custo/dia (24h) | Custo/mês (720h) |
+|---------|---------------|-----------------|-------------------|
+| **Redshift `ra3.large` × 1 nó** | ~$0,287/hora | **~$6,89** | **~$207** |
+| **Redshift Managed Storage** (dados do TPC-H) | $0,024/GB-mês | ~$0,03 | ~$0,80 |
+| **S3 Standard** (~1 GB de Parquet) | $0,023/GB-mês | negligível | ~$0,02 |
+| **Glue Data Catalog** (primeiros 1M objetos) | grátis | $0 | $0 |
+| **Total estimado** | — | **~$7/dia** | **~$210/mês** |
+
+> [!IMPORTANT]
+> **O cluster Redshift é 99% do custo.** Um fim de semana esquecido (~72h) consome ~$21 do seu budget do Learner Lab. Uma semana inteira, ~$50. Dois fins de semana, o budget acabou.
+
+### 28. Volte ao terminal do Codespaces
+
+Se você estava no Redshift Query Editor v2 no browser, alterne para a aba/janela do **GitHub Codespaces**. No Codespaces, abra um terminal integrado (`Ctrl+`` ` ou menu `Terminal → New Terminal`).
+
+<!-- PRINT SUGERIDO: img/codespaces_terminal_aberto.png
+     Codespaces com um terminal aberto, mostrando o prompt pronto para executar comandos. -->
+![](img/codespaces_terminal_aberto.png)
+
+### 29. Acesse a pasta de provisionamento
+
+A infra foi criada pelo Terraform localizado em `1-provisionamento/`. Entre nela:
+
+```bash
+cd /workspaces/FIAP-Data-Warehouse-Lakehouse-e-Data-Mesh/03-Data-Modeling-e-Data-Warehouse/1-provisionamento
+```
+
+Confirme que você está no diretório certo (deve haver `main.tf`, `variables.tf`, `outputs.tf`, `versions.tf`):
+
+```bash
+ls -la
+```
+
+### 30. Verifique o que está provisionado antes de destruir
+
+Opcional, mas boa prática. Liste os outputs para confirmar quais recursos serão removidos:
+
+```bash
+terraform output
+```
+
+Você deve ver o `redshift_cluster_identifier`, `s3_bucket_name` e `glue_database_name`.
+
+<!-- PRINT SUGERIDO: img/terraform_output_antes_destroy.png
+     Terminal mostrando os outputs do Terraform, com os 3 recursos principais visíveis.
+     É o último retrato do que existe antes do destroy. -->
+![](img/terraform_output_antes_destroy.png)
+
+### 31. Execute o destroy
+
+```bash
+terraform destroy
+```
+
+O Terraform vai listar os **15 recursos** que serão deletados e pedir confirmação. Digite `yes` e aguarde.
+
+> [!NOTE]
+> O destroy leva tipicamente **3 a 5 minutos**. O cluster Redshift é o mais demorado de destruir (~3 minutos) porque o serviço precisa liberar storage, snapshots e ENIs associadas.
+
+<details>
+<summary><b>💡 Clique para entender: o que o terraform destroy faz por baixo dos panos</b></summary>
+<blockquote>
+
+O Terraform lê o `terraform.tfstate` local, identifica todos os recursos gerenciados, calcula o grafo de dependências e destrói **na ordem inversa** da criação.
+
+### Ordem típica de deleção
+
+1. **Objetos S3** (prefixos `.keep`) — primeiros porque não têm dependência
+2. **Security Group Rules** (ingress e egress) — antes do SG
+3. **Security Group** — depois que as rules foram removidas
+4. **Bucket S3** — depois que está vazio (`force_destroy = true` garante isso)
+5. **Glue Database** — independente, cai junto
+6. **Redshift Cluster** — o mais demorado
+7. **Redshift Subnet Group** — depois que o cluster saiu
+8. **random_password** — último, porque só é usado pelo cluster
+
+### Se der erro no meio do destroy
+
+Rode `terraform destroy` novamente. O Terraform é **idempotente** — ele só tenta destruir o que ainda existe. Causas comuns:
+
+- Cluster Redshift em estado `modifying`: aguarde 30s e tente de novo
+- Dependência temporária não liberada (ex: ENI presa): espere 1-2 min e repita
+- Credenciais AWS expiradas: renove e tente novamente
+
+Documentação oficial:
+- [terraform destroy](https://developer.hashicorp.com/terraform/cli/commands/destroy)
+
+</blockquote>
+</details>
+
+### 32. Confirme que tudo foi removido
+
+Rode os 3 comandos abaixo. Todos devem retornar **vazio**:
+
+```bash
+# Nenhum cluster começando com "dw-aula3"
+aws redshift describe-clusters \
+    --query 'Clusters[?starts_with(ClusterIdentifier, `dw-aula3`)].ClusterIdentifier' \
+    --output text
+
+# Nenhum bucket começando com "dw-lab"
+aws s3 ls | grep dw-lab
+
+# Nenhum Glue database começando com "tpch_raw_"
+aws glue get-databases \
+    --query 'DatabaseList[?starts_with(Name, `tpch_raw_`)].Name' \
+    --output text
+```
+
+<!-- PRINT SUGERIDO: img/aws_cleanup_verificado.png
+     Terminal mostrando os 3 comandos acima e retorno vazio em todos.
+     Essa é a prova de que a limpeza funcionou. -->
+![](img/aws_cleanup_verificado.png)
+
+### 33. Feche o Codespaces
+
+Finalize também a sessão de trabalho:
+
+```bash
+# Ainda no terminal do Codespaces
+exit
+```
+
+Depois vá em [github.com/codespaces](https://github.com/codespaces), clique nos 3 pontinhos ao lado do ambiente e selecione **Stop Codespace**. Isso preserva suas horas gratuitas de Codespaces para a próxima aula.
+
+### Checkpoint final
+
+Se você chegou até aqui, então:
+
+- o cluster Redshift foi destruído (deixa de gerar custo)
+- o bucket S3 foi removido
+- o Glue Database foi deletado
+- o Security Group foi limpo
+- o Codespaces foi parado
+
+> [!TIP]
+> Você pode recriar todo o ambiente em qualquer outra aula rodando `terraform apply` novamente — leva 5-8 minutos e reproduz exatamente o mesmo estado. Essa é a beleza de infra como código.
+
+---
+
 ## Conclusão
 
 Se você chegou até aqui, você aplicou:
@@ -979,8 +1132,9 @@ Se você chegou até aqui, você aplicou:
 - SCD2 vs. fato snapshot periódico — duas modelagens para a mesma pergunta
 - medição objetiva de performance com EXPLAIN + stl_query
 - redesign físico da fato vs. MV dedicada como estratégias de otimização
+- teardown completo da infraestrutura via `terraform destroy`
 
-Este é o fechamento da trilha de Data Modeling + Data Warehouse. Você construiu um warehouse, sentiu as escolhas de modelagem impactarem números concretos, e viu como a evolução do negócio força o modelo a se adaptar.
+Este é o fechamento da trilha de Data Modeling + Data Warehouse. Você construiu um warehouse, sentiu as escolhas de modelagem impactarem números concretos, viu como a evolução do negócio força o modelo a se adaptar e aprendeu a limpar tudo para preservar o budget.
 
 ---
 
@@ -999,6 +1153,9 @@ Este é o fechamento da trilha de Data Modeling + Data Warehouse. Você construi
 | 9 | `img/baseline_execution_time.png` | Tempo de execução da query-alvo no baseline |
 | 10 | `img/mv_dashboard_execution_time.png` | Tempo ordens de grandeza menor via MV |
 | 11 | `img/stl_query_comparison.png` | Últimas 20 execuções via `stl_query` |
+| 12 | `img/codespaces_terminal_aberto.png` | Terminal do Codespaces pronto para o teardown |
+| 13 | `img/terraform_output_antes_destroy.png` | `terraform output` listando os recursos ativos |
+| 14 | `img/aws_cleanup_verificado.png` | Os 3 comandos AWS CLI retornando vazio após o destroy |
 
 **Como tirar**: `Cmd+Shift+4` (macOS) ou `Print Screen` (Windows). Salve como PNG em `03-Data-Modeling-e-Data-Warehouse/3-analise-dimensional/img/`.
 
