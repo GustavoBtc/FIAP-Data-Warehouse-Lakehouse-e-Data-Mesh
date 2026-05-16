@@ -20,7 +20,7 @@ Neste laboratório, você vai responder **exatamente a mesma pergunta de negóci
 
 ## O que você vai fazer
 
-Três schemas no mesmo cluster Redshift, a mesma query-âncora rodada nos três, **três números diferentes**. Tempo estimado: **75–95 min** em cluster `ra3.large` 2 nós, sendo ~12 min só para o `COPY` da Modelagem A (60M linhas em SF10).
+Três schemas no mesmo cluster Redshift, a mesma query-âncora rodada nos três, **três números diferentes**. Tempo estimado: **75–100 min** em cluster `ra3.large` × 2 nós (execução pura ~14 min + tempo para você ler, copiar comandos, observar resultados e refletir; o `COPY` da Modelagem A leva ~9 min só para `lineitem` por causa dos 60M linhas em SF10).
 
 1. **Modelagem A** (`oltp_mirror`) — cópia fiel do OLTP → produz `N₁`
 2. **Modelagem B** (`dw_star`) — star schema SCD Tipo 1 → produz `N₂ ≈ N₁`
@@ -56,10 +56,10 @@ Ao final deste laboratório, você terá implementado três modelagens do mesmo 
 | Parte | O que você faz | Tempo |
 |-------|----------------|-------|
 | [Parte 1](#parte-1---acessando-o-redshift-pelo-query-editor-v2) | Acessa o Redshift pelo Query Editor v2 | ~5 min |
-| [Parte 2](#parte-2---modelagem-a-espelho-do-oltp) | Modelagem A — espelho OLTP → produz `N₁` | ~25 min (12 min de COPY) |
-| [Parte 3](#parte-3---modelagem-b-star-schema-com-scd-tipo-1) | Modelagem B — star schema SCD1 → produz `N₂` | ~25 min |
-| [Parte 4](#parte-4---modelagem-c-star-schema-com-scd-tipo-2) | Modelagem C — star schema SCD2 → produz `N₃` | ~15 min |
-| [Parte 5](#parte-5---comparando-os-três-resultados) | Compara `N₁`, `N₂`, `N₃` e escreve `DECISION.md` | ~5 min |
+| [Parte 2](#parte-2---modelagem-a-espelho-do-oltp) | Modelagem A — espelho OLTP → produz `N₁` | ~30 min (9 min de COPY do `lineitem` + leitura) |
+| [Parte 3](#parte-3---modelagem-b-star-schema-com-scd-tipo-1) | Modelagem B — star schema SCD1 → produz `N₂` | ~25 min (3 min de execução + leitura) |
+| [Parte 4](#parte-4---modelagem-c-star-schema-com-scd-tipo-2) | Modelagem C — star schema SCD2 → produz `N₃` | ~20 min (3 min de execução + leitura) |
+| [Parte 5](#parte-5---comparando-os-três-resultados) | Compara `N₁`, `N₂`, `N₃` e escreve `DECISION.md` | ~10 min |
 
 <details>
 <summary><b>💡 Não viu a aula ainda? O que é um Data Warehouse em 3 parágrafos</b></summary>

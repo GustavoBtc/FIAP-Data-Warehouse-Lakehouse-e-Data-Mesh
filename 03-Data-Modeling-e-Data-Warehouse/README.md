@@ -127,7 +127,7 @@ Essa narrativa não é decorativa. Ela **força o aluno a enfrentar a ambiguidad
 
 ### Lab 03.1 — Do OLTP ao Star Schema: três modelagens, três respostas
 
-**Duração estimada**: 75-95 min
+**Duração estimada**: 75-100 min
 
 **Objetivo pedagógico**: levar o aluno a rodar **exatamente a mesma pergunta de negócio** em três modelagens diferentes da mesma base, observar que os números divergem e entender **por que cada divergência tem uma justificativa legítima**. No final, o aluno escolhe qual modelagem vai servir o dashboard e precisa defender a escolha.
 
@@ -213,7 +213,7 @@ O aluno roda a query-âncora nos três schemas e obtém **três números diferen
 
 ### Lab 03.2 — Evolução do negócio: quando a modelagem tem que mudar
 
-**Duração estimada**: 60-75 min
+**Duração estimada**: 70-90 min
 
 **Objetivo pedagógico**: simular que **o negócio mudou** e observar o que isso faz com o modelo escolhido. O aluno vê que evolução de negócio é uma força **constante** sobre o warehouse, e que decisões de modelagem tomadas no dia 1 raramente sobrevivem ao ano 2 sem ajuste. O recurso do Redshift vira consequência do problema de negócio, não o contrário.
 
@@ -475,7 +475,7 @@ bash scripts/load_tpch.sh                    ← 3-5 min (download + upload + cu
     │
     ▼
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Lab 03.1 — Três modelagens, três respostas (75-95 min)
+  Lab 03.1 — Três modelagens, três respostas (75-100 min)
   cd 02-modelagem-e-carga/
     Etapa A: oltp_mirror       → query-âncora → anota número
     Etapa B: dw_star (SCD1)    → query-âncora → anota número
@@ -486,7 +486,7 @@ bash scripts/load_tpch.sh                    ← 3-5 min (download + upload + cu
     │
     ▼
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Lab 03.2 — Evolução do negócio (60-75 min)
+  Lab 03.2 — Evolução do negócio (70-90 min)
   cd 03-analise-dimensional/
     Evolução 1: nova fórmula de receita (MV vs. view)
     Evolução 2: "cliente ativo" (SCD2 vs. snapshot periódico)

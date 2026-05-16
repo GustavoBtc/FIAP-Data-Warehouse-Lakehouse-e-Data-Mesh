@@ -21,7 +21,7 @@ Neste laboratório, você sente na prática por que a modelagem raramente sobrev
 
 ## O que você vai fazer
 
-3 evoluções de negócio aplicadas sobre o `dw_star` existente, sem recarregar dados do zero. Tempo estimado: **60–75 min** em cluster `ra3.large` × 2 nós.
+3 evoluções de negócio aplicadas sobre o `dw_star` existente, sem recarregar dados do zero. Tempo estimado: **70–90 min** em cluster `ra3.large` × 2 nós (execução pura ~5 min + tempo para você ler os blocos `<details>`, observar resultados das queries-alvo e refletir nas perguntas discursivas).
 
 1. **Evolução 1** — Nova fórmula de receita com comissão de marketplace (Views + Materialized Views versionadas)
 2. **Evolução 2** — Redefinição de "cliente ativo" (SCD Tipo 2 × fato snapshot periódico)
@@ -58,11 +58,11 @@ Ao final deste laboratório, você terá aplicado três evoluções de negócio 
 | Parte | O que você faz | Tempo |
 |-------|----------------|-------|
 | [Parte 1](#parte-1---preparação-e-validação-do-ambiente) | Valida o cluster + schema do Lab 03.1 | ~5 min |
-| [Parte 2](#parte-2---evolução-1-nova-fórmula-de-receita) | Evolução 1 — nova fórmula de receita (v1 vs v2) | ~20 min |
-| [Parte 3](#parte-3---evolução-2-redefinição-de-cliente-ativo) | Evolução 2 — redefinir "cliente ativo" (SCD2 vs snapshot) | ~20 min |
-| [Parte 4](#parte-4---evolução-3-sla-de-5s-no-dashboard-executivo) | Evolução 3 — SLA de 5s (EXPLAIN + MV + redesign) | ~25 min |
-| [Parte 5](#parte-5---reflexão-final) | Reflexão final escrita | ~5 min |
-| [Parte 6](#parte-6---destruindo-a-infraestrutura-ao-final-da-aula) | `terraform destroy` | ~5 min |
+| [Parte 2](#parte-2---evolução-1-nova-fórmula-de-receita) | Evolução 1 — nova fórmula de receita (v1 vs v2) | ~20 min (1 min de execução + leitura) |
+| [Parte 3](#parte-3---evolução-2-redefinição-de-cliente-ativo) | Evolução 2 — redefinir "cliente ativo" (SCD2 vs snapshot) | ~25 min (2 min de execução + leitura, P15 particionado) |
+| [Parte 4](#parte-4---evolução-3-sla-de-5s-no-dashboard-executivo) | Evolução 3 — SLA de 5s (EXPLAIN + MV + redesign) | ~25 min (1 min de execução + leitura) |
+| [Parte 5](#parte-5---reflexão-final) | Reflexão final escrita | ~10 min |
+| [Parte 6](#parte-6---destruindo-a-infraestrutura-ao-final-da-aula) | `terraform destroy` | ~8 min |
 
 ---
 
