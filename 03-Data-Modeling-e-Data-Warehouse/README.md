@@ -57,6 +57,21 @@ Para garantir que **todos os alunos executem a mesma query e obtenham o mesmo re
 - **Tamanho**: ~10,4 GB distribuído em **8 tabelas relacionais**
 - **Domínio**: sistema de compras / supply chain (cenário clássico, rico em relacionamentos)
 
+<details>
+<summary><b>💡 Por que TPC-H? (contexto histórico em 2 parágrafos)</b></summary>
+<blockquote>
+
+O **TPC-H** foi criado em 1999 pelo TPC (Transaction Processing Performance Council), um consórcio formado pelos principais fornecedores de banco de dados da época: Oracle, IBM, Microsoft, Sybase, Informix, NCR/Teradata. O objetivo era ter um **benchmark padrão** para Data Warehouse — cada fornecedor publicava o "TPC-H score" do seu produto como prova oficial de capacidade analítica. Por décadas, ganhar o benchmark era prestígio comercial. Em 2025, com tudo na nuvem e queries OLAP terabytes, ele perdeu relevância como métrica competitiva.
+
+Mas o **vocabulário** do TPC-H sobreviveu. As 8 tabelas (`orders`, `lineitem`, `customer`, `supplier`, `part`, `partsupp`, `nation`, `region`) viraram o "Hello World" universal de DW. Quando você lê em um livro, paper acadêmico ou doc oficial AWS *"fato vendas com `lineitem` como grain"*, a comunidade inteira entende. Por que escolhemos ele neste lab: você sai do MBA com fluência no exemplo que aparece em **80% das entrevistas técnicas de engenharia de dados** e em quase toda documentação da AWS sobre Redshift. É o equivalente analítico ao schema de pets da Hibernate — todo mundo conhece, e isso é uma vantagem.
+
+Referências:
+- [Especificação completa TPC-H 2.18 (PDF)](http://tpc.org/tpc_documents_current_versions/pdf/TPC-H_v2.18.0.pdf)
+- [Histórico do TPC](https://www.tpc.org/information/about/history.asp)
+
+</blockquote>
+</details>
+
 ### Tabelas do dataset (fonte operacional simulada)
 
 | Tabela | Descrição | Linhas (SF10) |

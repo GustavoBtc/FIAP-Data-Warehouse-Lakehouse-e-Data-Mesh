@@ -1,6 +1,18 @@
 # 03.2 - Evolução do negócio: quando a modelagem tem que mudar
 
-Neste laboratório, você sente na prática por que a modelagem raramente sobrevive inalterada de um trimestre para o outro. Três evoluções de negócio são aplicadas sobre o star schema do Lab 03.1, e cada uma força uma decisão de redesign.
+> **6 meses depois do Lab 03.1.**
+>
+> O `DECISION.md` que escrevemos juntos foi aprovado. O DW da TPCH Trading entrou em produção. Por 4 meses, ninguém liga para o engenheiro de dados — sinal verde. Aí, num único trimestre, **três pessoas batem na sua porta**:
+>
+> - **Marina (CFO)**: *"Janeiro: começamos a vender em marketplaces. Eles cobram comissão variável por fornecedor. Quero que a receita líquida que eu reporto reflita isso. Mas e os relatórios que já publiquei? Vão mudar de número?"*
+>
+> - **Lucas (CMO)**: *"Março: definição antiga de 'cliente ativo' está obsoleta. Quero ranking mensal: ativo é quem comprou nos últimos 12 meses **e** tem saldo aceitável. Funciona?"*
+>
+> - **CEO**: *"Maio: o dashboard executivo que vocês fizeram demora 20 segundos para abrir. Inaceitável. SLA de 5 segundos até sexta-feira."*
+>
+> Três demandas, três tipos de pressão (financeira, comercial, executiva), três decisões de modelagem diferentes. Vamos atacar uma de cada vez — **na ordem em que chegaram** — porque é como acontece na vida real: você nunca decide tudo de uma vez, você reage a uma coisa, sente a consequência, e aí encara a próxima.
+
+Este laboratório é o que acontece nesse trimestre. Vamos sentir na prática por que **modelagem raramente sobrevive inalterada de um trimestre para o outro**. Cada evolução de negócio é aplicada sobre o star schema do Lab 03.1, e cada uma força uma decisão de redesign.
 
 > [!WARNING]
 > **Pré-requisitos obrigatórios antes de começar:**
@@ -68,13 +80,29 @@ Ao final deste laboratório, você terá aplicado três evoluções de negócio 
 
 ## Contexto
 
-Estamos em 1998, continuidade da narrativa do Lab 03.1. A empresa cresceu, e três demandas simultâneas chegam ao time de dados no mesmo trimestre:
+A linha do tempo do trimestre, com Marina, Lucas e o CEO entrando em cena cada um na sua hora:
 
-1. **Marketplace**: abrimos vendas em marketplaces que cobram comissão variável por fornecedor. Finanças quer recalcular a receita líquida considerando essa comissão.
-2. **CRM**: o time de marketing quer redefinir "cliente ativo" — não é mais "quem comprou alguma vez", é "quem comprou nos últimos 12 meses **e** tem saldo aceitável".
-3. **Executivo**: o CEO cria um dashboard recorrente de receita por região × mês × segmento e exige SLA de **5 segundos**. Hoje a query leva ~20s.
+```
+JAN ────► MAR ────► MAI
+ │         │         │
+ ▼         ▼         ▼
+Marina    Lucas    CEO
+(CFO)     (CMO)    (executivo)
 
-Vamos atacar uma evolução de cada vez.
+Comissão  Cliente  SLA 5s
+de        ativo    no
+marketplace        dashboard
+```
+
+Cada evolução **muda o significado dos números** ou **muda como o dashboard performa**. E cada uma força uma decisão arquitetural diferente:
+
+| Evolução | Tipo de mudança | Decisão central |
+|----------|-----------------|-----------------|
+| **1 — Marina (jan)** | Métrica que muda de fórmula | Recalcular histórico OU congelar a versão antiga? |
+| **2 — Lucas (mar)** | Atributo dimensional que evolui no tempo | SCD2 OU fato snapshot periódico? |
+| **3 — CEO (mai)** | Performance do consumo | Redesign físico OU pré-agregar? |
+
+Vamos atacar uma evolução de cada vez, na ordem em que chegaram.
 
 ---
 
@@ -118,9 +146,22 @@ Se você chegou até aqui, então o ambiente do Lab 03.1 está preservado e pode
 
 ## Parte 2 - Evolução 1: nova fórmula de receita
 
+> **Janeiro. Marina manda um e-mail**: *"Os marketplaces começaram a cobrar comissão variável (3% a 12%) por fornecedor. A receita líquida que eu reporto **precisa** descontar isso a partir de agora. Mas tenho um problema: já publiquei 6 trimestres de relatório com a fórmula antiga. Se eu mudar retroativamente, perco a comparabilidade. Como você resolve?"*
+>
+> Esta evolução **não é técnica, é semântica**: a fórmula da métrica mudou. Vamos discutir juntos a estratégia de versionar fórmulas (v1 e v2 coexistindo) em vez de sobrescrever.
+
+### Por que essa evolução existe
+
+| Aspecto | Resposta curta |
+|---------|----------------|
+| **Problema de negócio** | Métrica financeira (receita líquida) muda de fórmula. Decisão sensível: recalcular histórico OU congelar versão antiga? Bater meta de 1996, contrato de bônus, comparativo público — tudo depende do número antigo. |
+| **Pergunta que essa evolução responde** | *"Como exponho duas fórmulas simultaneamente sem quebrar nada do que já está em produção?"* |
+| **Pergunta que essa evolução **não** resolve** | *"Qual fórmula está certa?"* — não há resposta universal. O lab te ensina a tornar essa decisão **explícita** e **documentada**, não a tomar a decisão por você. |
+| **Quando acontece na vida real** | Toda vez que uma métrica de KPI corporativo precisa mudar — comissionamento, regra contábil, redefinição de cohort. É uma das fontes de conflito mais comuns entre engenharia e finanças. |
+
 ### Resultado esperado desta parte
 
-Ao final desta etapa, a `dim_supplier` terá uma coluna `pct_comissao`, existirão duas views de receita (v1 com a fórmula antiga, v2 com a nova), e uma Materialized View com `AUTO REFRESH` pré-agregará a v2 por ano × mês × região × segmento.
+Ao final desta parte, a `dim_supplier` terá uma coluna `pct_comissao`, existirão duas views de receita (v1 com a fórmula antiga, v2 com a nova), e uma Materialized View com `AUTO REFRESH` pré-agregará a v2 por ano × mês × região × segmento.
 
 3. Acrescente o atributo `pct_comissao` em `dim_supplier`. Para fins didáticos, a comissão é determinística (entre 3% e 12%) baseada em `s_suppkey`:
 
@@ -428,9 +469,22 @@ Se você chegou até aqui, então:
 
 ## Parte 3 - Evolução 2: redefinição de "cliente ativo"
 
+> **Março. Lucas (CMO) chama na sala**: *"O conceito 'cliente ativo' que vocês usam está errado para mim. Preciso de algo mais sofisticado: ativo é quem **comprou nos últimos 12 meses** E **tem saldo aceitável** (não está endividado). Eu quero ver isso evoluir mês a mês — quantos ativos eu tinha em janeiro? Em fevereiro? Em qualquer mês de 1997?"*
+>
+> Esta evolução tem uma decisão de modelagem clássica: **modelar `is_active` como atributo de uma dimensão SCD2** (variável no tempo) ou **modelar como fato snapshot periódico** (1 linha por cliente × mês). Cada uma brilha em perguntas diferentes. Vamos construir as duas e ver na prática.
+
+### Por que essa evolução existe
+
+| Aspecto | Resposta curta |
+|---------|----------------|
+| **Problema de negócio** | Atributo de cliente que **muda no tempo** (status ativo/inativo) e o time de marketing precisa **série temporal** desse atributo — não basta saber o estado atual. |
+| **Pergunta que essa evolução responde** | *"Quando modelo um atributo dimensional volátil, uso SCD2 (atributo na dimensão) ou um fato snapshot (atributo no fato)?"* |
+| **Decisão central** | SCD2 é melhor para *"qual era o status em uma data específica?"*. Fato snapshot é melhor para *"qual a evolução mês a mês?"*. **As duas existem porque resolvem problemas diferentes.** |
+| **Quando acontece na vida real** | Status de cliente (ativo/churn), tier de fidelidade (bronze/prata/ouro), nível de risco de crédito, classificação ABC de produtos. Em fintech, em e-commerce, em telecom. |
+
 ### Resultado esperado desta parte
 
-Ao final desta etapa, você terá implementado o conceito "cliente ativo" de duas formas diferentes — como atributo SCD Tipo 2 em `dim_customer_v2` e como fato snapshot periódico `f_customer_status_mensal` — e comparado onde cada abordagem brilha ou sofre.
+Ao final desta parte, você terá implementado o conceito "cliente ativo" de **duas formas diferentes** — como atributo SCD Tipo 2 em `dim_customer_v2` e como fato snapshot periódico `f_customer_status_mensal` — e comparado onde cada abordagem brilha ou sofre.
 
 ### A regra de negócio
 
@@ -786,9 +840,22 @@ Se você chegou até aqui, então:
 
 ## Parte 4 - Evolução 3: SLA de 5s no dashboard executivo
 
+> **Maio. Você está em uma reunião quando o CEO entra**: *"O dashboard que vocês fizeram para o board demora 20 segundos para abrir. Isso é constrangedor. Quero menos de 5 segundos. Você tem até sexta-feira."*
+>
+> Diferente das duas anteriores, esta evolução **não é sobre semântica** — os números estão certos. É sobre **performance**. Vamos primeiro **medir** o baseline com `EXPLAIN`, depois testar **duas estratégias diferentes** (redesign físico da fato × MV pré-agregada) e comparar lado a lado.
+
+### Por que essa evolução existe
+
+| Aspecto | Resposta curta |
+|---------|----------------|
+| **Problema de negócio** | Dashboard executivo recorrente com SLA explícito (5s). A query atual demora 20s. Não dá para mudar a fórmula nem o resultado — só o **caminho** que o cluster percorre para chegar nele. |
+| **Pergunta que essa evolução responde** | *"Como reduzo tempo de query sem mudar nada do que ela retorna?"* — duas alavancas clássicas: (1) reorganizar **distribuição/sort** dos dados na fato, (2) **pré-agregar** o resultado em uma tabela menor. |
+| **Decisão central** | Redesign físico beneficia **todo workload** que filtra por aquela dimensão (efeito amplo, mas demanda re-criar tabela grande). MV pré-agregada beneficia **só** o dashboard, mas é pontual e barata. |
+| **Quando acontece na vida real** | Toda vez que um stakeholder C-level reclama de tempo de dashboard. É a evolução **mais frequente** em DWs maduros. |
+
 ### Resultado esperado desta parte
 
-Ao final desta etapa, você terá medido a query-alvo, testado duas estratégias de otimização (redesign físico da fato × MV pré-agregada) e documentado a decisão.
+Ao final desta parte, você terá medido a query-alvo, testado **duas estratégias de otimização** (redesign físico da fato × MV pré-agregada) e documentado a decisão.
 
 ### A query-alvo
 

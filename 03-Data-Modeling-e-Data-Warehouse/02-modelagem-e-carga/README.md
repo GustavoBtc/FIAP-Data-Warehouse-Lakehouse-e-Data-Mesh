@@ -1,6 +1,21 @@
 # 03.1 - Do OLTP ao Star Schema: três modelagens, três respostas
 
-Neste laboratório, você vai responder **exatamente a mesma pergunta de negócio** em três modelagens diferentes da mesma base, observar que os números divergem, e entender por que cada divergência tem uma justificativa legítima. No final, você registra a sua escolha em um `DECISION.md`, simulando o que um engenheiro de dados produz na vida real.
+> **O cenário que vamos viver hoje.**
+> Imagine que você é engenheiro de dados na **TPCH Trading**, uma distribuidora B2B com sede em São Paulo. Sua diretora financeira, **Marina**, te procura no Slack:
+>
+> > *— "Preciso fechar a apresentação para o conselho de segunda. Quanto faturamos em 1995, **somente com clientes do segmento AUTOMOBILE**, dividido por região? O CEO vai abrir falando dos 30 anos da empresa e quer destacar essa receita."*
+>
+> Parece simples. Você roda a query no banco operacional. Resposta sai em 8 segundos. Manda o número para Marina.
+>
+> Na segunda às 9h, antes da reunião, ela escreve de novo:
+>
+> > *— "Você consegue rodar essa mesma query usando a base do data warehouse novo? O time de BI está montando os dashboards lá e quero validar se os números batem."*
+>
+> Você roda no DW. **O número não bate.**
+>
+> Ela liga.
+
+Esse é o cenário que vamos explorar juntos durante a aula. Você vai acompanhar o professor passo a passo, respondendo **exatamente a mesma pergunta de negócio** em três modelagens diferentes da mesma base, observar que os números divergem, e entender por que cada divergência tem uma justificativa legítima. No final, vamos preencher juntos um `DECISION.md` que justifica a escolha para Marina e o conselho — **simulando o que um engenheiro de dados produz na vida real quando precisa defender uma escolha de modelagem**.
 
 > [!WARNING]
 > **Pré-requisitos obrigatórios antes de começar:**
@@ -387,9 +402,20 @@ Se você chegou até aqui, então:
 
 ## Parte 2 - Modelagem A: espelho do OLTP
 
+> **Vamos começar pelo cenário mais simples**: o time de dados subiu o Redshift na semana passada e a primeira coisa que fez foi **espelhar literalmente** o banco operacional. Sem transformar, sem modelar. É como muitas empresas começam — vamos sentir as consequências disso na pele.
+
+### Por que essa modelagem existe
+
+| Aspecto | Resposta curta |
+|---------|----------------|
+| **Problema de negócio** | A empresa migrou para o Redshift e o time de dados quer responder perguntas analíticas **sem** montar nenhum modelo dimensional novo. Espelham o OLTP literalmente, banco por banco, tabela por tabela. |
+| **Pergunta que ela responde bem** | *"Qual é o status atual do pedido X?"* — o DW vira um leitor secundário do OLTP, sem perda de fidelidade. |
+| **Pergunta que ela responde mal** | *"Qual a receita por região × mês × segmento em 1995?"* — exige 5 joins entre tabelas grandes, demora muito, e é difícil garantir consistência semântica entre analistas (cada um aplica fórmulas diferentes). |
+| **Quando acontece na vida real** | Nas primeiras semanas após "subir o DW" — antes de modelar. É um modo de transição comum que muitas empresas mantêm permanentemente por inércia. |
+
 ### Resultado esperado desta parte
 
-Ao final desta etapa, as 8 tabelas do TPC-H estarão criadas no schema `oltp_mirror` e carregadas via `COPY FROM S3`. A query-âncora terá produzido o primeiro número (`N₁`).
+Ao final desta parte, as 8 tabelas do TPC-H estarão criadas no schema `oltp_mirror` e carregadas via `COPY FROM S3`. A query-âncora terá produzido o **primeiro número (`N₁`)** — o número que respondemos para Marina na primeira tentativa.
 
 5. Crie o schema e as 8 tabelas TPC-H. Este schema reproduz o modelo relacional operacional, sem qualquer transformação analítica:
 
@@ -781,9 +807,20 @@ Se você chegou até aqui, então:
 
 ## Parte 3 - Modelagem B: star schema com SCD Tipo 1
 
+> **Marina não está convencida com o `N₁` que produzimos**: a query foi lenta e os analistas internos da TPCH Trading reclamam que cada um chega num número diferente quando aplica a fórmula de receita líquida. **Vamos agora construir um star schema dedicado** — modelo dimensional clássico Kimball — e rodar a mesma pergunta nele.
+
+### Por que essa modelagem existe
+
+| Aspecto | Resposta curta |
+|---------|----------------|
+| **Problema de negócio** | Analistas reclamam que rodar a query-âncora direto no `oltp_mirror` demora 30 segundos e cada um aplica fórmulas diferentes para "receita líquida". Time de BI propõe **um modelo dimensional dedicado** com fato `f_vendas` e dimensões. |
+| **Pergunta que ela responde bem** | *"Receita por região × mês × segmento em 1995"* — a fato já tem grain ideal (1 linha = 1 item de pedido) e medidas materializadas (`vl_receita_liquida` calculada uma vez, lida muitas). |
+| **Pergunta que ela responde mal** | *"Qual era o segmento do cliente X em 1995, antes da reclassificação?"* — SCD Tipo 1 sobrescreve atributos quando muda. Histórico se perde. |
+| **Quando acontece na vida real** | Modelo "default" da maioria dos warehouses — Kimball clássico. Funciona em 80% dos casos onde o atributo dimensional **não muda** ou onde **só importa o valor atual**. |
+
 ### Resultado esperado desta parte
 
-Ao final desta etapa, o schema `dw_star` terá 5 dimensões (`dim_data`, `dim_customer`, `dim_produto`, `dim_supplier`, `dim_geografia`) e uma fato (`f_vendas`), todas com surrogate keys e estratégia física adequada. A query-âncora terá produzido `N₂`.
+Ao final desta parte, o schema `dw_star` terá 5 dimensões (`dim_data`, `dim_customer`, `dim_produto`, `dim_supplier`, `dim_geografia`) e uma fato (`f_vendas`), todas com surrogate keys e estratégia física adequada. A query-âncora terá produzido **`N₂`** — o número que o time de BI está mostrando no dashboard novo.
 
 11. Crie o schema:
 
@@ -1272,9 +1309,22 @@ Se você chegou até aqui, então:
 
 ## Parte 4 - Modelagem C: star schema com SCD Tipo 2
 
+> **Marina retorna**: *"O `N₂` veio diferente do `N₁`? Como assim? São os MESMOS pedidos, só mudou o jeito de organizar os dados."*
+>
+> Boa pergunta. **A explicação está no histórico que perdemos** quando o SCD Tipo 1 da Modelagem B sobrescreveu o segmento dos clientes que migraram de categoria depois de 1995. Vamos agora construir uma terceira modelagem que **preserva esse histórico** e ver o que acontece com o número.
+
+### Por que essa modelagem existe
+
+| Aspecto | Resposta curta |
+|---------|----------------|
+| **Problema de negócio** | Auditoria pergunta: *"como esse cliente foi classificado em 1995, no momento da venda?"* — não basta saber o segmento atual. Quando o atributo de uma dimensão **muda no tempo** e essa mudança importa para a análise histórica, SCD Tipo 1 deixa o engenheiro descalço. |
+| **Pergunta que ela responde bem** | *"Receita histórica respeitando como o cliente era classificado **na época** da venda"* — cada pedido aponta para a versão do cliente vigente naquela data. |
+| **Pergunta que ela responde mal** | *"Qual a receita do segmento atual, considerando a base de clientes de hoje?"* — cliente que mudou aparece em duas versões; queries que filtram pelo segmento atual precisam adicionar `WHERE is_current = TRUE`. Mais complexidade no SQL. |
+| **Quando acontece na vida real** | Auditoria, compliance, análise retroativa. Setores regulados (financeiro, saúde, seguros) operam com SCD2 por padrão. Em vendas/marketing, costuma-se usar **SCD2 só nos atributos que importam historicamente** (raramente em todos os campos). |
+
 ### Resultado esperado desta parte
 
-Ao final desta etapa, o schema `dw_star_scd2` terá uma `dim_customer` versionada com histórico de segmento e uma fato `f_vendas` apontando para a versão vigente na data de cada pedido. A query-âncora vai produzir `N₃`, **diferente** de `N₁` e `N₂`.
+Ao final desta parte, o schema `dw_star_scd2` terá uma `dim_customer` versionada com histórico de segmento e uma fato `f_vendas` apontando para a versão vigente na data de cada pedido. A query-âncora vai produzir **`N₃`**, **diferente** de `N₁` e `N₂` — e a diferença é o que vamos discutir com Marina.
 
 19. Crie o schema e carregue a tabela auxiliar `customer_history`. Essa tabela foi gerada sinteticamente pelo `load_tpch.sh` e contém reclassificações de segmento pós-1995 em **exatamente ~75.000 clientes** (5% da base SF10 de 1,5M, amostragem determinística com seed `42` — todo aluno obtém o mesmo conjunto):
 
@@ -1594,9 +1644,13 @@ Se você chegou até aqui, então:
 
 ## Parte 5 - Comparando os três resultados
 
+> **Marina vai entrar na reunião com o conselho em 30 minutos**: *"Você me mandou três números agora. Qual deles eu uso?"*
+>
+> Esta é a parte mais importante do lab. Vamos colocar os 3 números lado a lado, entender por que divergem, e produzir um **documento de decisão** que Marina pode levar para o conselho — explicando qual número escolhemos e por quê.
+
 ### Resultado esperado desta parte
 
-Ao final desta etapa, você terá colocado os 3 números lado a lado, entendido por que divergem, e preenchido um documento de decisão simulando um entregável real de engenharia.
+Ao final desta parte, você terá colocado os 3 números lado a lado, entendido por que divergem, e preenchido um documento de decisão simulando um entregável real de engenharia.
 
 26. Monte a tabela comparativa com os valores que você anotou:
 
@@ -1646,17 +1700,17 @@ Ambas as perguntas são legítimas. Ambas aparecem em reuniões reais. A diferen
 > [!IMPORTANT]
 > O trabalho do engenheiro de dados não é escolher sozinho entre `N₁`, `N₂` e `N₃`. É tornar as duas perguntas **distinguíveis**, **conversáveis** e **auditáveis**. Uma modelagem bem feita permite expor as duas lado a lado, com nomes explícitos e contratos claros.
 
-28. No terminal do Codespaces, copie o template e preencha sua decisão:
+28. **Marina entra na reunião com o conselho daqui a pouco**. Você precisa entregar a ela um documento curto e objetivo justificando qual número ela apresenta. No terminal do Codespaces, copie o template e preencha:
 
 ```bash
 cd /workspaces/FIAP-Data-Warehouse-Lakehouse-e-Data-Mesh/03-Data-Modeling-e-Data-Warehouse/02-modelagem-e-carga
 cp DECISION_TEMPLATE.md DECISION.md
 ```
 
-O [`DECISION_TEMPLATE.md`](DECISION_TEMPLATE.md) tem seções para: contexto, os três números observados, decisão + alternativas descartadas, consequências, perguntas a fazer ao stakeholder, decisões técnicas secundárias (distkey, sortkey, receita materializada vs. view).
+O [`DECISION_TEMPLATE.md`](DECISION_TEMPLATE.md) tem seções para: contexto (a pergunta que Marina fez), os três números observados, decisão + alternativas descartadas, consequências, perguntas que você faria a Marina antes de fechar a posição, decisões técnicas secundárias (distkey, sortkey, receita materializada vs. view).
 
 > [!TIP]
-> Em entrevistas de engenharia de dados, esse tipo de documento aparece como sinal de senioridade. Saber escrever um é tão importante quanto saber escrever o SQL.
+> Em entrevistas de engenharia de dados, esse tipo de documento aparece como sinal de senioridade. Saber escrever um é tão importante quanto saber escrever o SQL — porque você nunca decide sozinho, sempre defende a decisão para alguém como Marina.
 
 ---
 
