@@ -41,7 +41,7 @@ Não vamos te dar os SQLs prontos. **Você escreve o pipeline inteiro**, usando 
 
 ![Arquitetura do trabalho final](img/arquitetura-trabalho-final.png)
 
-O diagrama mostra o fluxo ponta a ponta do trabalho: (1) o **setup** roda no Codespaces e materializa 3 CSVs sintéticos no S3 com `seed=42`; (2) a **camada bruto** vive em prefixos separados por entidade dentro de `tf-aluno-<ACCOUNT_ID>`; (3) o **Glue Crawler** cataloga os 3 CSVs como tabelas externas, e o **Athena** transforma esses raws em tabelas **Iceberg** (`clientes_iceberg`, `pedidos_iceberg`, `pedidos_delta_iceberg`) via `CREATE TABLE` + `INSERT`/CTAS, evolui o esquema com `ALTER TABLE ADD COLUMNS`, aplica o delta de CDC via `MERGE INTO` e mantém a saúde da tabela com `OPTIMIZE` + `VACUUM`; (4) a **query executiva** faz `JOIN` entre as duas Iceberg para devolver o top 5 clientes por receita líquida, e o `DECISION.md` em ADR fecha o entregável para a Marina.
+O diagrama mostra o fluxo ponta a ponta do trabalho: (1) o **setup** roda no Codespaces e materializa 3 CSVs sintéticos no S3; (2) a **camada bruto** vive em prefixos separados por entidade dentro de `tf-aluno-<ACCOUNT_ID>`; (3) o **Glue Crawler** cataloga os 3 CSVs como tabelas externas, e o **Athena** transforma esses raws em tabelas **Iceberg** (`clientes_iceberg`, `pedidos_iceberg`, `pedidos_delta_iceberg`) via `CREATE TABLE` + `INSERT`/CTAS, evolui o esquema com `ALTER TABLE ADD COLUMNS`, aplica o delta de CDC via `MERGE INTO` e mantém a saúde da tabela com `OPTIMIZE` + `VACUUM`; (4) a **query executiva** faz `JOIN` entre as duas Iceberg para devolver o top 5 clientes por receita líquida, e o `DECISION.md` em ADR fecha o entregável para a Marina.
 
 Fonte editável: [`img/arquitetura-trabalho-final.drawio`](img/arquitetura-trabalho-final.drawio).
 
@@ -151,15 +151,15 @@ Como ler o diagrama:
 | Tarefa | O que você faz | Passos | Tempo |
 |--------|----------------|--------|-------|
 | [Tarefa 1](#tarefa-1---provisionamento-do-bucket-e-dataset) | Provisiona bucket S3 e gera os 3 CSVs | [1](#passo-1) · [2](#passo-2) · [3](#passo-3) | ~10 min |
-| [Tarefa 2](#tarefa-2---catalogar-no-glue-com-crawler) | Roda script que cria database + crawler e valida 3 tabelas raw | [4](#passo-4) · [5](#passo-5) | ~5 min |
-| [Tarefa 3](#tarefa-3---criar-tabelas-iceberg-vazias) | DDL Iceberg: `clientes_iceberg` + `pedidos_iceberg` | [6](#passo-6) · [7](#passo-7) · [8](#passo-8) | ~15 min |
-| [Tarefa 4](#tarefa-4---carregar-dados-iniciais) | `INSERT INTO ... SELECT` com `CAST(data_pedido AS DATE)` | [9](#passo-9) · [10](#passo-10) | ~15 min |
-| [Tarefa 5](#tarefa-5---adicionar-coluna-calculada-valor_final) | `ALTER TABLE` + `UPDATE` materializando `valor_final` | [11](#passo-11) · [12](#passo-12) · [13](#passo-13) | ~15 min |
-| [Tarefa 6](#tarefa-6---aplicar-delta-de-cdc-com-merge-into) | CTAS Iceberg do delta + `MERGE INTO` | [14](#passo-14) · [15](#passo-15) · [16](#passo-16) | ~25 min |
-| [Tarefa 7](#tarefa-7---otimizar-a-tabela) | `OPTIMIZE` (BIN_PACK) + `VACUUM` | [17](#passo-17) · [18](#passo-18) · [19](#passo-19) | ~15 min |
-| [Tarefa 8](#tarefa-8---entrega-da-query-executiva) | Top 5 clientes por receita líquida | [20](#passo-20) · [21](#passo-21) | ~10 min |
-| [Tarefa 9](#tarefa-9---escrever-decisionmd) | Defender a evolução técnica em ADR | [22](#passo-22) | ~30 min |
-| [Tarefa 10](#tarefa-10---limpeza) | Limpa S3 + Glue para preservar budget Learner Lab | [23](#passo-23) | ~5 min |
+| [Tarefa 2](#tarefa-2---catalogar-no-glue-com-crawler) | Roda script que cria database + crawler e valida 3 tabelas raw | [4](#passo-4) | ~5 min |
+| [Tarefa 3](#tarefa-3---criar-tabelas-iceberg-vazias) | DDL Iceberg: `clientes_iceberg` + `pedidos_iceberg` | [5](#passo-5) · [6](#passo-6) · [7](#passo-7) | ~15 min |
+| [Tarefa 4](#tarefa-4---carregar-dados-iniciais) | `INSERT INTO ... SELECT` com `CAST(data_pedido AS DATE)` | [8](#passo-8) · [9](#passo-9) | ~15 min |
+| [Tarefa 5](#tarefa-5---adicionar-coluna-calculada-valor_final) | `ALTER TABLE` + `UPDATE` materializando `valor_final` | [10](#passo-10) · [11](#passo-11) · [12](#passo-12) | ~15 min |
+| [Tarefa 6](#tarefa-6---aplicar-delta-de-cdc-com-merge-into) | CTAS Iceberg do delta + `MERGE INTO` | [13](#passo-13) · [14](#passo-14) · [15](#passo-15) | ~25 min |
+| [Tarefa 7](#tarefa-7---otimizar-a-tabela) | `OPTIMIZE` (BIN_PACK) + `VACUUM` | [16](#passo-16) · [17](#passo-17) · [18](#passo-18) | ~15 min |
+| [Tarefa 8](#tarefa-8---entrega-da-query-executiva) | Top 5 clientes por receita líquida | [19](#passo-19) · [20](#passo-20) | ~10 min |
+| [Tarefa 9](#tarefa-9---escrever-decisionmd) | Defender a evolução técnica em ADR | [21](#passo-21) | ~30 min |
+| [Tarefa 10](#tarefa-10---limpeza) | Limpa S3 + Glue para preservar budget Learner Lab | [22](#passo-22) | ~5 min |
 
 > [!TIP]
 > Se travou em algum passo, clique no número correspondente acima.
@@ -193,7 +193,7 @@ A **TPCH Trading** consolidou os pedidos do ano em um CSV no S3 e está prestes 
 3. Aceite um delta diário de CDC sem reescrever a tabela inteira.
 4. Possa ser auditada (snapshots) e otimizada (compactação).
 
-O dataset é sintético, gerado com seed fixa: **todo aluno obtém os mesmos números**. Compare seu top 5 com o de um colega — se diferir, alguém errou a carga.
+O dataset é sintético e ja vem pronto: o setup gera os 3 CSVs e faz upload no seu bucket.
 
 ---
 
@@ -219,7 +219,7 @@ cd /workspaces/FIAP-Data-Warehouse-Lakehouse-e-Data-Mesh/04-Trabalho-Final
 
 <a id="passo-2"></a>
 
-**2.** Rode o setup. Ele detecta seu account ID, cria o bucket `tf-aluno-<ACCOUNT_ID>`, gera os 3 CSVs (deterministicamente, seed=42) e faz upload em prefixos separados:
+**2.** Rode o setup. Ele detecta seu account ID, cria o bucket `tf-aluno-<ACCOUNT_ID>`, gera os 3 CSVs e faz upload em prefixos separados:
 
 ```bash
 bash scripts/setup_aluno.sh
@@ -294,30 +294,7 @@ Um **database Glue** chamado `trabalho_final_aluno` com **3 tabelas raw** (Hive 
 
 <a id="passo-4"></a>
 
-**4.** Antes de criar o crawler, descubra seu **account ID** uma única vez (você vai reutilizar nas próximas tarefas):
-
-```bash
-aws sts get-caller-identity --query Account --output text
-```
-
-A saída são 12 dígitos. **Anote esse valor** — toda vez que um SQL do trabalho mencionar `<ACCOUNT_ID>`, você substitui pelo seu. Alternativa: o nome do bucket que você criou no passo 2 já carrega esse valor (`tf-aluno-XXXXXXXXXXXX`):
-
-```bash
-aws s3 ls | grep tf-aluno
-```
-
-<details>
-<summary><b>💡 Clique para entender: por que substituir manualmente o ACCOUNT_ID?</b></summary>
-<blockquote>
-
-Athena não tem variáveis em SQL como `\set` no psql. Cada `LOCATION 's3://...'` precisa do bucket literal. Como cada aluno tem um account ID diferente, o jeito mais simples é descobrir uma vez e substituir nos 6-7 SQLs. Se você usa VS Code, "Find & Replace" no painel do Athena resolve em 1 segundo.
-
-</blockquote>
-</details>
-
-<a id="passo-5"></a>
-
-**5.** Rode o script de setup do Glue Crawler. Ele cria o database `trabalho_final_aluno`, cria o crawler apontando para `s3://tf-aluno-<ACCOUNT_ID>/bruto/`, dispara a execução, **espera o crawler terminar** (~1-2 min) e **valida que as 3 tabelas vieram com os schemas esperados**:
+**4.** Rode o script de setup do Glue Crawler. Ele cria o database `trabalho_final_aluno`, cria o crawler apontando para `s3://tf-aluno-<ACCOUNT_ID>/bruto/`, dispara a execução, **espera o crawler terminar** (~1-2 min) e **valida que as 3 tabelas vieram com os schemas esperados**:
 
 ```bash
 cd /workspaces/FIAP-Data-Warehouse-Lakehouse-e-Data-Mesh/04-Trabalho-Final && \
@@ -402,9 +379,18 @@ A `LOCATION` de cada tabela aponta para `s3://tf-aluno-<ACCOUNT_ID>/iceberg/<ent
 
 ---
 
-<a id="passo-6"></a>
+> [!IMPORTANT]
+> **Account ID:** os SQLs daqui para frente têm `<ACCOUNT_ID>` em `LOCATION 's3://tf-aluno-<ACCOUNT_ID>/...'`. Pegue o seu uma única vez no terminal e tenha à mão para substituir:
+>
+> ```bash
+> aws sts get-caller-identity --query Account --output text
+> ```
+>
+> Saída: 12 dígitos. Use "Find & Replace" do editor para trocar nos SQLs antes de colar no Athena. O nome do bucket que você criou na Tarefa 1 já carrega esse valor (`tf-aluno-XXXXXXXXXXXX`) — pode pegar de lá também via `aws s3 ls | grep tf-aluno`.
 
-**6.** No [console do Athena](https://us-east-1.console.aws.amazon.com/athena/home?region=us-east-1#/landing-page), clique em **Editor de consultas**, selecione o database `trabalho_final_aluno` no painel esquerdo e configure o **Resultado da consulta** para `s3://tf-aluno-<ACCOUNT_ID>/athena-results/` (substitua seu account ID).
+<a id="passo-5"></a>
+
+**5.** No [console do Athena](https://us-east-1.console.aws.amazon.com/athena/home?region=us-east-1#/landing-page), clique em **Editor de consultas**, selecione o database `trabalho_final_aluno` no painel esquerdo e configure o **Resultado da consulta** para `s3://tf-aluno-<ACCOUNT_ID>/athena-results/` (substitua seu account ID).
 
 <details>
 <summary><b>💡 Para usuários avançados: rodar SQLs via terminal em vez do console</b></summary>
@@ -424,9 +410,9 @@ Para o trabalho avaliativo, o caminho oficial continua sendo escrever os SQLs do
 </blockquote>
 </details>
 
-<a id="passo-7"></a>
+<a id="passo-6"></a>
 
-**7.** Crie a tabela `clientes_iceberg`. Dica: use `CREATE TABLE` (sem `EXTERNAL`) com `TBLPROPERTIES ('table_type'='iceberg', ...)`. Schema:
+**6.** Crie a tabela `clientes_iceberg`. Dica: use `CREATE TABLE` (sem `EXTERNAL`) com `TBLPROPERTIES ('table_type'='iceberg', ...)`. Schema:
 
 | Coluna | Tipo |
 |--------|------|
@@ -465,9 +451,9 @@ Sem `EXTERNAL`, sem `STORED AS`. O `table_type='iceberg'` é o que faz o Athena 
 </blockquote>
 </details>
 
-<a id="passo-8"></a>
+<a id="passo-7"></a>
 
-**8.** Crie a tabela `pedidos_iceberg` com o schema abaixo. **Atenção**: `data_pedido` é **`DATE`** aqui (não `STRING` como na raw — vamos fazer o `CAST` na carga):
+**7.** Crie a tabela `pedidos_iceberg` com o schema abaixo. **Atenção**: `data_pedido` é **`DATE`** aqui (não `STRING` como na raw — vamos fazer o `CAST` na carga):
 
 | Coluna | Tipo |
 |--------|------|
@@ -507,9 +493,9 @@ Se rodar `SELECT * FROM pedidos_iceberg` agora, deve retornar 0 linhas (a tabela
 
 ---
 
-<a id="passo-9"></a>
+<a id="passo-8"></a>
 
-**9.** Carregue `clientes_iceberg` a partir de `clientes` (a tabela raw) com um `INSERT INTO ... SELECT`. Liste as colunas explicitamente — incluindo `ano_nascimento` — para deixar o contrato visível.
+**8.** Carregue `clientes_iceberg` a partir de `clientes` (a tabela raw) com um `INSERT INTO ... SELECT`. Liste as colunas explicitamente — incluindo `ano_nascimento` — para deixar o contrato visível.
 
 Valide o resultado:
 
@@ -518,9 +504,9 @@ SELECT COUNT(*) FROM trabalho_final_aluno.clientes_iceberg;
 -- esperado: 10000
 ```
 
-<a id="passo-10"></a>
+<a id="passo-9"></a>
 
-**10.** Carregue `pedidos_iceberg` a partir de `pedidos` (a tabela raw). Aqui mora a **conversão de tipo crítica**: o crawler inferiu `data_pedido` como `STRING` (formato `YYYY-MM-DD`), mas a Iceberg está esperando `DATE`. Use:
+**9.** Carregue `pedidos_iceberg` a partir de `pedidos` (a tabela raw). Aqui mora a **conversão de tipo crítica**: o crawler inferiu `data_pedido` como `STRING` (formato `YYYY-MM-DD`), mas a Iceberg está esperando `DATE`. Use:
 
 ```sql
 ... CAST(data_pedido AS DATE) AS data_pedido ...
@@ -577,9 +563,9 @@ valor_final = quantidade * preco_unitario * (1 - desconto) + frete
 
 ---
 
-<a id="passo-11"></a>
+<a id="passo-10"></a>
 
-**11.** Use `ALTER TABLE ... ADD COLUMNS (valor_final DOUBLE)` para adicionar a coluna no schema. Esta operação é **barata em Iceberg** — só altera metadado, não reescreve arquivos de dados.
+**10.** Use `ALTER TABLE ... ADD COLUMNS (valor_final DOUBLE)` para adicionar a coluna no schema. Esta operação é **barata em Iceberg** — só altera metadado, não reescreve arquivos de dados.
 
 <details>
 <summary><b>💡 Clique para entender: ALTER TABLE em Iceberg é metadado</b></summary>
@@ -587,18 +573,18 @@ valor_final = quantidade * preco_unitario * (1 - desconto) + frete
 
 Em Hive externa (data lake puro), adicionar coluna exige reescrever a tabela inteira (ou conviver com `null` em todas as linhas existentes para sempre, sem voltar atrás). Em Iceberg, o schema é versionado no metadado: o `ALTER` cria uma nova versão do schema, e linhas antigas continuam no Parquet original — quando lidas, são "preenchidas" com `null` na coluna nova até serem regravadas.
 
-Por isso o `ALTER` roda em ~5 segundos. Já o `UPDATE` do passo 12 é o que demora — ele varre os 100k registros e regrava arquivos com a coluna materializada.
+Por isso o `ALTER` roda em ~5 segundos. Já o `UPDATE` do passo 11 é o que demora — ele varre os 100k registros e regrava arquivos com a coluna materializada.
 
 </blockquote>
 </details>
 
+<a id="passo-11"></a>
+
+**11.** Rode um `UPDATE` que materializa `valor_final` em todas as linhas. Tempo esperado no Athena: **30–60 segundos**.
+
 <a id="passo-12"></a>
 
-**12.** Rode um `UPDATE` que materializa `valor_final` em todas as linhas. Tempo esperado no Athena: **30–60 segundos**.
-
-<a id="passo-13"></a>
-
-**13.** Valide:
+**12.** Valide:
 
 ```sql
 SELECT
@@ -652,9 +638,9 @@ flowchart LR
 
 ---
 
-<a id="passo-14"></a>
+<a id="passo-13"></a>
 
-**14.** Crie a tabela intermediária `pedidos_delta_iceberg` via `CREATE TABLE ... AS SELECT` (CTAS) lendo de `pedidos_delta` (a tabela raw). Aplique no `SELECT`:
+**13.** Crie a tabela intermediária `pedidos_delta_iceberg` via `CREATE TABLE ... AS SELECT` (CTAS) lendo de `pedidos_delta` (a tabela raw). Aplique no `SELECT`:
 
 - `CAST(data_pedido AS DATE)` (mesmo motivo da Tarefa 4)
 - `quantidade * preco_unitario * (1 - desconto) + frete AS valor_final`
@@ -697,9 +683,9 @@ SELECT * FROM trabalho_final_aluno.pedidos_delta_iceberg ORDER BY id_pedido;
 -- 2 com id_pedido = O000001/O000002 (updates dos primeiros pedidos, desconto = 0.50 / 0.45)
 ```
 
-<a id="passo-15"></a>
+<a id="passo-14"></a>
 
-**15.** Aplique o `MERGE INTO`. Chave: `id_pedido`. Comportamento:
+**14.** Aplique o `MERGE INTO`. Chave: `id_pedido`. Comportamento:
 
 - `WHEN MATCHED` → `UPDATE SET` todas as colunas de negócio (incluindo `valor_final`)
 - `WHEN NOT MATCHED` → `INSERT` com todas as colunas, incluindo `valor_final`
@@ -720,9 +706,9 @@ A CTAS intermediária resolve os 2: regra de negócio fica num lugar só (a CTAS
 </blockquote>
 </details>
 
-<a id="passo-16"></a>
+<a id="passo-15"></a>
 
-**16.** Valide o resultado:
+**15.** Valide o resultado:
 
 ```sql
 -- 1) total deve ser 100.003 (100k + 3 inserts)
@@ -759,18 +745,18 @@ A tabela `pedidos_iceberg` é compactada (BIN_PACK) e o número de arquivos fís
 
 ---
 
-<a id="passo-17"></a>
+<a id="passo-16"></a>
 
-**17.** Foto **antes** do OPTIMIZE — anote o número de arquivos:
+**16.** Foto **antes** do OPTIMIZE — anote o número de arquivos:
 
 ```sql
 SELECT COUNT(*) AS num_arquivos_antes
 FROM "trabalho_final_aluno"."pedidos_iceberg$files";
 ```
 
-<a id="passo-18"></a>
+<a id="passo-17"></a>
 
-**18.** Rode o OPTIMIZE com estratégia BIN_PACK (default — agrupa arquivos pequenos em arquivos maiores até ~512 MB) e em seguida o VACUUM (limpa snapshots órfãos além do retention default):
+**17.** Rode o OPTIMIZE com estratégia BIN_PACK (default — agrupa arquivos pequenos em arquivos maiores até ~512 MB) e em seguida o VACUUM (limpa snapshots órfãos além do retention default):
 
 ```sql
 OPTIMIZE trabalho_final_aluno.pedidos_iceberg REWRITE DATA USING BIN_PACK;
@@ -791,9 +777,9 @@ Você executou `OPTIMIZE` e `VACUUM` no mesmo painel SQL (Athena considera isso 
 </blockquote>
 </details>
 
-<a id="passo-19"></a>
+<a id="passo-18"></a>
 
-**19.** Foto **depois** do OPTIMIZE:
+**18.** Foto **depois** do OPTIMIZE:
 
 ```sql
 SELECT COUNT(*) AS num_arquivos_depois
@@ -824,9 +810,9 @@ Uma query que devolve **5 linhas** com top 5 clientes por receita líquida total
 
 ---
 
-<a id="passo-20"></a>
+<a id="passo-19"></a>
 
-**20.** Escreva a query: top 5 clientes por `SUM(valor_final)`, com `JOIN` entre `pedidos_iceberg` e `clientes_iceberg`. Colunas:
+**19.** Escreva a query: top 5 clientes por `SUM(valor_final)`, com `JOIN` entre `pedidos_iceberg` e `clientes_iceberg`. Colunas:
 
 | Coluna | Origem |
 |--------|--------|
@@ -844,12 +830,9 @@ Uma query que devolve **5 linhas** com top 5 clientes por receita líquida total
 > [!TIP]
 > Como a tabela `clientes_iceberg` agora tem `ano_nascimento`, você pode opcionalmente enriquecer a query com a idade dos clientes do top 5 (ex: `2024 - ano_nascimento AS idade`) — útil para a Marina entender o perfil dos top compradores. Não é obrigatório, mas conta ponto de maturidade analítica.
 
-<a id="passo-21"></a>
+<a id="passo-20"></a>
 
-**21.** Anote o `id_cliente` do **#1 da lista** e a `receita_total`. Compare com um colega: como o dataset é determinístico (seed=42), os 2 devem ter o **mesmo id_cliente e mesmo valor**.
-
-> [!TIP]
-> Se você e um colega rodarem o trabalho corretamente, o top 5 de vocês é **idêntico até o centavo**. Se diferir, alguém errou um passo (provavelmente o `CAST` na Tarefa 4 ou o MERGE na Tarefa 6). Comparação social vira ferramenta de auto-validação.
+**20.** Anote o `id_cliente` do **#1 da lista** e a `receita_total`.
 
 ### Checkpoint
 
@@ -867,9 +850,9 @@ Um arquivo `DECISION.md` (estilo ADR — Architecture Decision Record) defendend
 
 ---
 
-<a id="passo-22"></a>
+<a id="passo-21"></a>
 
-**22.** Crie um arquivo `DECISION.md` na sua pasta de entregáveis do Codespaces, com a estrutura:
+**21.** Crie um arquivo `DECISION.md` na sua pasta de entregáveis do Codespaces, com a estrutura:
 
 ```markdown
 # DECISION — Como evoluir `pedidos_iceberg` se a TPCH crescer 100×
@@ -910,9 +893,9 @@ Bucket S3 vazio e tabelas Glue removidas. Conta AWS limpa, Learner Lab budget pr
 
 ---
 
-<a id="passo-23"></a>
+<a id="passo-22"></a>
 
-**23.** Limpe os recursos. **Esta etapa é obrigatória** — esquecer de limpar consome budget do Learner Lab.
+**22.** Limpe os recursos. **Esta etapa é obrigatória** — esquecer de limpar consome budget do Learner Lab.
 
 ```bash
 # Esvazia o bucket (necessario antes de deletar)
@@ -971,7 +954,7 @@ Se você chegou até aqui, então entregou:
 
 Antes de abrir issue/perguntar no Slack, colete estas 4 informações:
 
-1. **Em que passo você está** (ex: "passo 15, rodando o `MERGE INTO`")
+1. **Em que passo você está** (ex: "passo 14, rodando o `MERGE INTO`")
 2. **Mensagem de erro literal** (copia-cola completo do painel de query do Athena)
 3. **Saída de** `SELECT operation, count(*) FROM "trabalho_final_aluno"."pedidos_iceberg$snapshots" GROUP BY operation;` (mostra histórico de operações)
 4. **O que você já tentou**

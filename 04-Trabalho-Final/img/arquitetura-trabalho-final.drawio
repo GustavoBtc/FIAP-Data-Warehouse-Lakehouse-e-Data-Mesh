@@ -75,10 +75,10 @@
         <mxCell id="cs-script1" value="setup_aluno.sh" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F6F8;strokeColor=#D4D7DB;fontSize=11;fontFamily=Courier New;fontColor=#232F3E;arcSize=6;align=center;" vertex="1" parent="1">
           <mxGeometry x="80" y="300" width="220" height="22" as="geometry" />
         </mxCell>
-        <mxCell id="cs-script2" value="generate_dataset.py  (seed=42)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F6F8;strokeColor=#D4D7DB;fontSize=11;fontFamily=Courier New;fontColor=#232F3E;arcSize=6;align=center;" vertex="1" parent="1">
+        <mxCell id="cs-script2" value="generate_dataset.py" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F6F8;strokeColor=#D4D7DB;fontSize=11;fontFamily=Courier New;fontColor=#232F3E;arcSize=6;align=center;" vertex="1" parent="1">
           <mxGeometry x="80" y="328" width="220" height="22" as="geometry" />
         </mxCell>
-        <mxCell id="cs-detail" value="Cria bucket, gera 3 CSVs sinteticos&#10;deterministicos e faz upload em&#10;prefixos separados por entidade." style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontFamily=Helvetica;fontColor=#687078;" vertex="1" parent="1">
+        <mxCell id="cs-detail" value="Cria bucket, gera 3 CSVs sinteticos&#10;e faz upload em prefixos&#10;separados por entidade." style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontFamily=Helvetica;fontColor=#687078;" vertex="1" parent="1">
           <mxGeometry x="60" y="358" width="260" height="50" as="geometry" />
         </mxCell>
         <mxCell id="cs-time" value="~10 min · Tarefa 1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0F7EC;strokeColor=#7AA116;fontSize=10;fontStyle=1;fontFamily=Helvetica;fontColor=#5C7E10;arcSize=30;" vertex="1" parent="1">
@@ -197,7 +197,7 @@
         <mxCell id="query-sub" value="JOIN clientes_iceberg + pedidos_iceberg" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontFamily=Courier New;fontColor=#687078;" vertex="1" parent="1">
           <mxGeometry x="1260" y="292" width="380" height="18" as="geometry" />
         </mxCell>
-        <mxCell id="query-text" value="Top 5 clientes por receita liquida&#10;(soma valor_final · seed=42 deterministica)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6FFE6;strokeColor=#009933;fontSize=11;fontStyle=1;fontFamily=Helvetica;fontColor=#232F3E;arcSize=6;align=center;verticalAlign=middle;" vertex="1" parent="1">
+        <mxCell id="query-text" value="Top 5 clientes por receita liquida&#10;(soma valor_final)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6FFE6;strokeColor=#009933;fontSize=11;fontStyle=1;fontFamily=Helvetica;fontColor=#232F3E;arcSize=6;align=center;verticalAlign=middle;" vertex="1" parent="1">
           <mxGeometry x="1280" y="320" width="340" height="44" as="geometry" />
         </mxCell>
         <mxCell id="decision-text" value="DECISION.md (Tarefa 9)&#10;ADR defendendo evolucao para 100x" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6FFE6;strokeColor=#009933;fontSize=11;fontStyle=1;fontFamily=Helvetica;fontColor=#232F3E;arcSize=6;align=center;verticalAlign=middle;" vertex="1" parent="1">
@@ -264,7 +264,7 @@
         <mxCell id="footer-title" value="Fluxo pedagogico do trabalho final" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontFamily=Helvetica;fontColor=#232F3E;" vertex="1" parent="1">
           <mxGeometry x="80" y="790" width="600" height="22" as="geometry" />
         </mxCell>
-        <mxCell id="footer-step1" value="1. Setup automatizado: dataset sintetico deterministico (seed=42) — todo aluno obtem os mesmos numeros." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontFamily=Helvetica;fontColor=#232F3E;" vertex="1" parent="1">
+        <mxCell id="footer-step1" value="1. Setup automatizado: dataset sintetico no S3." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontFamily=Helvetica;fontColor=#232F3E;" vertex="1" parent="1">
           <mxGeometry x="80" y="816" width="1560" height="22" as="geometry" />
         </mxCell>
         <mxCell id="footer-step2" value="2. Glue Crawler cataloga raws → CTAS Iceberg + ALTER + UPDATE + MERGE INTO + OPTIMIZE — pipeline lakehouse ponta a ponta no Athena." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontFamily=Helvetica;fontColor=#232F3E;" vertex="1" parent="1">

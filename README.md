@@ -74,7 +74,7 @@ Comece pelo setup e avance sequencialmente. Cada laboratório tem seu próprio `
 | 03.1 | **Data Modeling — Provisionamento** | Sobe toda a infraestrutura do lab (S3, Glue Data Catalog, cluster Redshift `ra3.large` × 2 nós) via Terraform com state remoto no S3 e carrega o dataset TPC-H SF10 (~10 GB, 60M linhas em `lineitem`) com o script `load_tpch.sh` em ~1m40 via S3-to-S3 server-side copy. | [03-Data-Modeling-e-Data-Warehouse/01-provisionamento](03-Data-Modeling-e-Data-Warehouse/01-provisionamento/README.md) |
 | 03.2 | **Do OLTP ao Star Schema** | Implementa três modelagens da mesma base TPC-H (espelho OLTP, star SCD Tipo 1, star SCD Tipo 2), executa a mesma pergunta de negócio nas três e observa por que os números divergem legitimamente. Fecha com um `DECISION.md` no estilo ADR. | [03-Data-Modeling-e-Data-Warehouse/02-modelagem-e-carga](03-Data-Modeling-e-Data-Warehouse/02-modelagem-e-carga/README.md) |
 | 03.3 | **Evolução do negócio no warehouse** | Três evoluções aplicadas sobre o star schema: nova fórmula de receita com Materialized Views versionadas, redefinição de "cliente ativo" (SCD2 × fato snapshot periódico) e SLA de 5s no dashboard executivo via redesign de distkey + MV pré-agregada. | [03-Data-Modeling-e-Data-Warehouse/03-analise-dimensional](03-Data-Modeling-e-Data-Warehouse/03-analise-dimensional/README.md) |
-| 04 | **Trabalho Final — Olist Lakehouse** | Projeto end-to-end consolidando o que foi visto: setup automatizado (S3 + dataset sintético determinístico, seed=42), Glue Crawler, tabelas Iceberg via CTAS (Parquet + ZSTD), coluna calculada `valor_final`, carga incremental via `MERGE INTO`, `OPTIMIZE` e query executiva (top 5 clientes por receita). Fecha com `DECISION.md` no estilo ADR e zip pronto para upload no portal FIAP. | [04-Trabalho-Final](04-Trabalho-Final/README.md) |
+| 04 | **Trabalho Final — TPCH Trading** | Projeto end-to-end consolidando o que foi visto: setup automatizado (S3 + dataset sintético), Glue Crawler, tabelas Iceberg via CTAS (Parquet + ZSTD), coluna calculada `valor_final`, carga incremental via `MERGE INTO`, `OPTIMIZE` e query executiva (top 5 clientes por receita). Fecha com `DECISION.md` no estilo ADR e zip pronto para upload no portal FIAP. | [04-Trabalho-Final](04-Trabalho-Final/README.md) |
 
 ---
 
@@ -94,7 +94,7 @@ Comece pelo setup e avance sequencialmente. Cada laboratório tem seu próprio `
 │   ├── 02-modelagem-e-carga/           # Lab 03.2 — três modelagens, três respostas
 │   └── 03-analise-dimensional/         # Lab 03.3 — evolução do negócio no warehouse
 ├── 04-Trabalho-Final/                 # Projeto final — Iceberg + Glue + MERGE + query executiva
-│   └── scripts/                        #   setup_aluno.sh + generate_dataset.py (dataset sintético seed=42) + run_athena_sql.sh
+│   └── scripts/                        #   setup_aluno.sh + generate_dataset.py + setup_glue_crawler.sh + run_athena_sql.sh
 ├── .devcontainer/                     # Configuração do GitHub Codespaces
 └── FIAP.png
 ```
@@ -123,7 +123,7 @@ Cada laboratório assume que os anteriores foram concluídos. Em especial:
 
 - Os labs de **Open Table Format (02.x)** dependem do bucket `base-config-<SEU RM>` criado no setup inicial e do ambiente TPC-DS preparado no primeiro lab do Athena.
 - Os labs de **Data Warehouse (03.x)** dependem da infraestrutura provisionada pelo Terraform em `03-Data-Modeling-e-Data-Warehouse/01-provisionamento/` e usam o dataset TPC-H SF10 carregado pelo script `load_tpch.sh` (S3-to-S3 server-side copy, ~1m40).
-- O **Trabalho Final (04)** assume que você viu pelo menos os Labs 02.1 e 02.2 (Iceberg básico + `MERGE INTO`/`OPTIMIZE`); não depende do Redshift do Lab 03 e usa Athena exclusivamente. O dataset é gerado por `04-Trabalho-Final/scripts/generate_dataset.py` (sintético, determinístico com `seed=42` — todo aluno produz os mesmos números).
+- O **Trabalho Final (04)** assume que você viu pelo menos os Labs 02.1 e 02.2 (Iceberg básico + `MERGE INTO`/`OPTIMIZE`); não depende do Redshift do Lab 03 e usa Athena exclusivamente. O dataset é gerado pelo `04-Trabalho-Final/scripts/generate_dataset.py` durante o setup.
 
 ---
 

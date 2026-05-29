@@ -4,17 +4,10 @@ generate_dataset.py — gera os 3 CSVs sinteticos do trabalho final.
 
 O QUE FAZ
 =========
-Gera (deterministicamente, seed=42) tres arquivos CSV:
+Gera tres arquivos CSV:
   clientes.csv       — 10.000 linhas
   pedidos.csv        — 100.000 linhas
   pedidos_delta.csv  — 5 linhas (3 inserts + 2 updates)
-
-POR QUE DETERMINISTICO
-======================
-Todo aluno que rodar o script obtem os MESMOS dados — entao a query final
-"top 5 clientes" devolve as MESMAS 5 linhas em qualquer turma. Isso permite
-correcao automatica e comparacao entre alunos (compare md5sum com o colega:
-se diferir, alguem rodou em ambiente quebrado).
 
 USO
 ===
@@ -36,8 +29,8 @@ import sys
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# Constantes deterministas — ordem importa! Listas (nao set/dict) para
-# garantir reprodutibilidade entre execucoes e versoes do Python.
+# Constantes — ordem importa! Listas (nao set/dict) para garantir
+# reprodutibilidade entre execucoes e versoes do Python.
 # ---------------------------------------------------------------------------
 
 SEED = 42
@@ -140,7 +133,7 @@ def ordinal_to_iso(ordinal: int) -> str:
 # ---------------------------------------------------------------------------
 
 def gerar_clientes(rng: random.Random) -> list[dict]:
-    """Gera 10.000 clientes deterministicamente.
+    """Gera 10.000 clientes.
 
     Cada id_cliente segue o formato C00001 .. C10000 (sequencial, nao
     aleatorio — facilita debug e a query do trabalho final).
@@ -198,7 +191,7 @@ def gerar_pedidos(rng: random.Random, pesos_clientes: list[float]) -> list[dict]
     ids_clientes = [f"C{i:05d}" for i in range(1, N_CLIENTES + 1)]
 
     # Sorteia todos os ids_clientes de uma vez (mais rapido e
-    # deterministicamente consistente com o estado do rng).
+    # consistente com o estado do rng).
     sorteados = rng.choices(ids_clientes, weights=pesos_clientes, k=N_PEDIDOS)
 
     pedidos = []
@@ -232,7 +225,7 @@ def gerar_delta(pedidos: list[dict]) -> list[dict]:
       - 2 UPDATEs: usa os ids_pedido dos 2 PRIMEIROS pedidos de pedidos.csv,
         com desconto aumentado representando ajuste pos-fechamento.
 
-    Totalmente deterministico — nao usa rng. O aluno enxerga este arquivo
+    Linhas fixas — nao usa rng. O aluno enxerga este arquivo
     como 'os 5 deltas que vieram do fim do dia'.
     """
     p1 = pedidos[0]  # primeiro pedido (sera atualizado)
@@ -319,7 +312,7 @@ def escrever_csv(path: Path, fieldnames: list[str], rows: list[dict]) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Gera os 3 CSVs sinteticos do trabalho final (deterministicos, seed=42).",
+        description="Gera os 3 CSVs sinteticos do trabalho final.",
     )
     parser.add_argument(
         "output_dir",
@@ -349,7 +342,7 @@ def main() -> int:
     # estado, mantendo a sequencia reprodutivel.
     rng = random.Random(SEED)
 
-    print(f"[2/5] Gerando clientes.csv ({N_CLIENTES} linhas, seed={SEED})...")
+    print(f"[2/5] Gerando clientes.csv ({N_CLIENTES} linhas)...")
     clientes = gerar_clientes(rng)
     escrever_csv(
         clientes_path,
@@ -357,7 +350,7 @@ def main() -> int:
         clientes,
     )
 
-    print(f"[3/5] Gerando pedidos.csv ({N_PEDIDOS} linhas, seed={SEED})...")
+    print(f"[3/5] Gerando pedidos.csv ({N_PEDIDOS} linhas)...")
     pesos = construir_pesos_pareto(rng)
     pedidos = gerar_pedidos(rng, pesos)
     escrever_csv(
@@ -380,7 +373,7 @@ def main() -> int:
         deltas,
     )
 
-    print("[5/5] Calculando md5sum dos arquivos para validar reprodutibilidade...")
+    print("[5/5] Calculando md5sum dos arquivos...")
     md5_clientes = md5_of_file(clientes_path)
     md5_pedidos = md5_of_file(pedidos_path)
     md5_delta = md5_of_file(delta_path)

@@ -109,7 +109,7 @@ PRE-REQUISITOS:
   - Role IAM LabRole disponivel (default no Learner Lab).
 
 PROXIMOS PASSOS APOS O SETUP:
-  Abrir o Athena e seguir o passo 6 do README (criar tabelas Iceberg).
+  Abrir o Athena e seguir o passo 5 do README (criar tabelas Iceberg).
 HELP
 }
 
