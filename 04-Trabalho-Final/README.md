@@ -925,25 +925,7 @@ trabalho-final.zip
 
 <a id="passo-22"></a>
 
-**22.** Monte a pasta de entrega no Codespaces:
-
-```bash
-cd /workspaces/FIAP-Data-Warehouse-Lakehouse-e-Data-Mesh/04-Trabalho-Final && \
-  mkdir -p entrega/trabalho-final/sql && \
-  mkdir -p entrega/trabalho-final/prints && \
-  echo "Pasta entrega/ criada. Copie seus arquivos para sql/ e prints/, e mova o DECISION.md para a raiz."
-```
-
-Cole os 6 SQLs do grupo em `entrega/trabalho-final/sql/`. Cole os 4 prints em `entrega/trabalho-final/prints/`. Mova o `DECISION.md` para `entrega/trabalho-final/`.
-
-Confira a estrutura final:
-
-```bash
-cd /workspaces/FIAP-Data-Warehouse-Lakehouse-e-Data-Mesh/04-Trabalho-Final && \
-  find entrega/trabalho-final -type f | sort
-```
-
-Esperado: 11 linhas (6 SQLs + 4 PNGs + 1 DECISION.md).
+**22.** Na **máquina local de um do grupo** (Windows, Mac ou Linux), crie uma pasta `trabalho-final/` com os 11 arquivos exatamente como na estrutura acima — use o gerenciador de arquivos do SO. Não há comando padrão entre os 3 sistemas, então faça pelo Explorer / Finder / Nautilus mesmo.
 
 <details>
 <summary><b>⚠ Se faltar arquivo: revise as Tarefas 2-9</b></summary>
@@ -970,26 +952,16 @@ Esperado: 11 linhas (6 SQLs + 4 PNGs + 1 DECISION.md).
 
 <a id="passo-23"></a>
 
-**23.** Gere o zip final:
+**23.** Compacte a pasta `trabalho-final/` em um zip e suba no **portal FIAP**, no espaço do trabalho que o professor criou para a sua turma.
 
-```bash
-cd /workspaces/FIAP-Data-Warehouse-Lakehouse-e-Data-Mesh/04-Trabalho-Final/entrega && \
-  zip -r trabalho-final.zip trabalho-final/ && \
-  ls -lh trabalho-final.zip
-```
-
-Esperado: arquivo entre 200 KB e 5 MB (depende do tamanho dos prints).
-
-Faça upload no **portal FIAP**, no espaço do **trabalho que o professor criou para a sua turma** (não há link único — cada turma tem o seu).
+| SO | Como zipar |
+|----|------------|
+| Windows | Botão direito na pasta → **Enviar para → Pasta compactada (zip)** |
+| Mac | Botão direito na pasta → **Comprimir "trabalho-final"** |
+| Linux | Botão direito na pasta → **Comprimir → .zip** |
 
 > [!CAUTION]
-> O upload no portal é **a única forma de submissão válida**. Repositório próprio, e-mail, Slack: nada disso conta como entrega. Se o portal não aceitar (timeout, formato), abra issue ou e-mail antes do prazo — depois do prazo a submissão fora do portal não é aceita.
-
-### Checkpoint
-
-- [ ] `trabalho-final.zip` validado com `find` (11 arquivos)
-- [ ] Upload feito no portal FIAP **antes do prazo da sua turma**
-- [ ] Confirmação visual de que o portal aceitou o arquivo
+> O upload no portal é **a única forma de submissão válida**. Repositório próprio, e-mail, Slack: nada disso conta como entrega.
 
 ---
 
