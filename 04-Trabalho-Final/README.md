@@ -432,6 +432,8 @@ A `LOCATION` de cada tabela aponta para `s3://tf-aluno-<ACCOUNT_ID>/iceberg/<ent
 
 **5.** No [console do Athena](https://us-east-1.console.aws.amazon.com/athena/home?region=us-east-1#/landing-page), clique em **Editor de consultas**, selecione o database `trabalho_final_aluno` no painel esquerdo e configure o **Resultado da consulta** para `s3://tf-aluno-<ACCOUNT_ID>/athena-results/` (substitua seu account ID).
 
+> 💡 **Apoio:** o setup do Athena com bucket de resultados foi feito passo a passo no [Lab 02.1, Parte 2](../02-Open-Table-Format/01-Funcionalidades-Basicas/README.md). Se travar aqui, releia esses passos.
+
 <details>
 <summary><b>💡 Para usuários avançados: rodar SQLs via terminal em vez do console</b></summary>
 <blockquote>
@@ -453,6 +455,8 @@ Para o trabalho avaliativo, o caminho oficial continua sendo escrever os SQLs do
 <a id="passo-6"></a>
 
 **6.** Crie a tabela `clientes_iceberg`. Dica: use `CREATE TABLE` (sem `EXTERNAL`) com `TBLPROPERTIES ('table_type'='iceberg', ...)`. Schema:
+
+> 💡 **Apoio:** o `CREATE TABLE` Iceberg com `TBLPROPERTIES` idêntico ao que você precisa aqui está no [Lab 02.1 — Funcionalidades Básicas (Parte 3 — Criando a base Iceberg)](../02-Open-Table-Format/01-Funcionalidades-Basicas/README.md#parte-3---criando-a-base-iceberg).
 
 | Coluna | Tipo |
 |--------|------|
@@ -537,6 +541,8 @@ Se rodar `SELECT * FROM pedidos_iceberg` agora, deve retornar 0 linhas (a tabela
 
 **8.** Carregue `clientes_iceberg` a partir de `clientes` (a tabela raw) com um `INSERT INTO ... SELECT`. Liste as colunas explicitamente — incluindo `ano_nascimento` — para deixar o contrato visível.
 
+> 💡 **Apoio:** `INSERT INTO ... SELECT` em tabela Iceberg foi exercitado no [Lab 02.1 — Parte 5 (Inserindo dados)](../02-Open-Table-Format/01-Funcionalidades-Basicas/README.md#parte-5---inserindo-dados).
+
 Valide o resultado:
 
 ```sql
@@ -607,6 +613,8 @@ valor_final = quantidade * preco_unitario * (1 - desconto) + frete
 
 **10.** Use `ALTER TABLE ... ADD COLUMNS (valor_final DOUBLE)` para adicionar a coluna no schema. Esta operação é **barata em Iceberg** — só altera metadado, não reescreve arquivos de dados.
 
+> 💡 **Apoio:** evolução de schema com `ALTER TABLE ADD COLUMNS` foi feita no [Lab 02.1](../02-Open-Table-Format/01-Funcionalidades-Basicas/README.md) (seção de evolução de schema, próximo dos passos 32-37).
+
 <details>
 <summary><b>💡 Clique para entender: ALTER TABLE em Iceberg é metadado</b></summary>
 <blockquote>
@@ -621,6 +629,8 @@ Por isso o `ALTER` roda em ~5 segundos. Já o `UPDATE` do passo 11 é o que demo
 <a id="passo-11"></a>
 
 **11.** Rode um `UPDATE` que materializa `valor_final` em todas as linhas. Tempo esperado no Athena: **30–60 segundos**.
+
+> 💡 **Apoio:** `UPDATE` materializando uma coluna calculada está no [Lab 03.3 (Tarefa 1 — comissão de fornecedores)](../03-Data-Modeling-e-Data-Warehouse/03-analise-dimensional/README.md), no padrão `UPDATE ... SET coluna = expressão`.
 
 <a id="passo-12"></a>
 
@@ -727,6 +737,8 @@ SELECT * FROM trabalho_final_aluno.pedidos_delta_iceberg ORDER BY id_pedido;
 
 **14.** Aplique o `MERGE INTO`. Chave: `id_pedido`. Comportamento:
 
+> 💡 **Apoio:** sintaxe completa de `MERGE INTO ... USING ... ON ... WHEN MATCHED THEN UPDATE / WHEN NOT MATCHED THEN INSERT` está no [Lab 02.2 — Funcionalidades Avançadas (Parte 2 — MERGE INTO)](../02-Open-Table-Format/02-Funcionalidades-avancadas/README.md#parte-2---atualizar-excluir-ou-inserir-linhas-condicionalmente-com-merge).
+
 - `WHEN MATCHED` → `UPDATE SET` todas as colunas de negócio (incluindo `valor_final`)
 - `WHEN NOT MATCHED` → `INSERT` com todas as colunas, incluindo `valor_final`
 
@@ -798,6 +810,8 @@ FROM "trabalho_final_aluno"."pedidos_iceberg$files";
 
 **17.** Rode o OPTIMIZE com estratégia BIN_PACK (default — agrupa arquivos pequenos em arquivos maiores até ~512 MB) e em seguida o VACUUM (limpa snapshots órfãos além do retention default):
 
+> 💡 **Apoio:** `OPTIMIZE ... REWRITE DATA USING BIN_PACK` + inspeção de arquivos via `"tabela$files"` está no [Lab 02.2 — Parte 3 (Otimizando tabelas Iceberg)](../02-Open-Table-Format/02-Funcionalidades-avancadas/README.md#parte-3---otimizando-tabelas-iceberg).
+
 ```sql
 OPTIMIZE trabalho_final_aluno.pedidos_iceberg REWRITE DATA USING BIN_PACK;
 ```
@@ -854,6 +868,8 @@ Uma query que devolve **5 linhas** com top 5 clientes por receita líquida total
 
 **19.** Escreva a query: top 5 clientes por `SUM(valor_final)`, com `JOIN` entre `pedidos_iceberg` e `clientes_iceberg`. Colunas:
 
+> 💡 **Apoio:** query analítica com `JOIN` entre fato e dimensão + `SUM` + `GROUP BY` + `ORDER BY ... DESC` é a query-âncora do [Lab 03.2 — Modelagem e Carga (passo 9, query da AUTOMOBILE em 1995)](../03-Data-Modeling-e-Data-Warehouse/02-modelagem-e-carga/README.md#passo-9).
+
 | Coluna | Origem |
 |--------|--------|
 | id_cliente | clientes |
@@ -893,6 +909,8 @@ Um arquivo `DECISION.md` (estilo ADR — Architecture Decision Record) defendend
 <a id="passo-21"></a>
 
 **21.** Crie um arquivo `DECISION.md` na sua pasta de entregáveis do Codespaces, com a estrutura:
+
+> 💡 **Apoio:** o padrão de "recado para o stakeholder" + decisão técnica defendida foi feito no [Lab 03.2 (passo final — recado para Marina)](../03-Data-Modeling-e-Data-Warehouse/02-modelagem-e-carga/README.md). Use a mesma estrutura: contexto, decisão, alternativas descartadas, consequências.
 
 ```markdown
 # DECISION — Como evoluir `pedidos_iceberg` se a TPCH crescer 100×
