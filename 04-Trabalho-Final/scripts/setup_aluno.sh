@@ -18,14 +18,14 @@ export AWS_PAGER=""
 #   5) Cria o bucket S3 (se ja existir, segue em frente).
 #   6) Prepara WORKDIR local (/tmp/tf-aluno-setup/dataset/).
 #   7) Roda generate_dataset.py (vizinho deste script) para gerar 3 CSVs:
-#        customers.csv (10001 linhas com cabecalho)
-#        orders.csv    (100001 linhas com cabecalho)
-#        delta_orders.csv (6 linhas com cabecalho)
+#        clientes.csv      (10001 linhas com cabecalho)
+#        pedidos.csv       (100001 linhas com cabecalho)
+#        pedidos_delta.csv (6 linhas com cabecalho)
 #   8) Valida tamanho/contagem de linhas dos 3 CSVs.
 #   9) Faz upload para o bucket em prefixos SEPARADOS:
-#        s3://<bucket>/raw/customers/customers.csv
-#        s3://<bucket>/raw/orders/orders.csv
-#        s3://<bucket>/raw/delta_orders/delta_orders.csv
+#        s3://<bucket>/bruto/clientes/clientes.csv
+#        s3://<bucket>/bruto/pedidos/pedidos.csv
+#        s3://<bucket>/bruto/pedidos_delta/pedidos_delta.csv
 #      (prefixos separados sao OBRIGATORIOS para o Glue Crawler criar
 #      uma tabela por entidade na Tarefa 2 do README.)
 #  10) Confirma que os 3 objetos existem no S3 e nao estao vazios.
@@ -55,8 +55,8 @@ TOTAL_STEPS=11
 CURRENT_STEP=0
 
 # Linhas esperadas em cada CSV (incluindo cabecalho).
-EXPECTED_CUSTOMERS_LINES=10001
-EXPECTED_ORDERS_LINES=100001
+EXPECTED_CLIENTES_LINES=10001
+EXPECTED_PEDIDOS_LINES=100001
 EXPECTED_DELTA_LINES=6
 
 #############################################
@@ -102,11 +102,11 @@ O QUE FAZ:
   5.  Cria o bucket S3 (idempotente).
   6.  Prepara diretorio de trabalho local (/tmp/tf-aluno-setup/dataset).
   7.  Roda generate_dataset.py (vizinho deste script) para gerar 3 CSVs.
-  8.  Valida contagem de linhas: customers=10001, orders=100001, delta=6.
+  8.  Valida contagem de linhas: clientes=10001, pedidos=100001, delta=6.
   9.  Faz upload em prefixos S3 separados:
-        raw/customers/customers.csv
-        raw/orders/orders.csv
-        raw/delta_orders/delta_orders.csv
+        bruto/clientes/clientes.csv
+        bruto/pedidos/pedidos.csv
+        bruto/pedidos_delta/pedidos_delta.csv
  10.  Valida o upload (head-object dos 3 arquivos).
  11.  Imprime sumario e proximos passos (Tarefa 2: Glue Crawler).
 
@@ -122,7 +122,7 @@ VARIAVEIS RELEVANTES (definidas no inicio do script):
 
 PROXIMOS PASSOS APOS O SETUP:
   Abrir o README do Trabalho Final e seguir a Tarefa 2 (criar Glue Crawler
-  apontando para s3://tf-aluno-<accountID>/raw/).
+  apontando para s3://tf-aluno-<accountID>/bruto/).
 HELP
 }
 
@@ -395,13 +395,13 @@ echo "Account ID: $ACCOUNT_ID"
 progress "Definindo nomes dos recursos..."
 BUCKET="${BUCKET_PREFIX}-${ACCOUNT_ID}"
 S3_BASE="s3://${BUCKET}"
-S3_CUSTOMERS="${S3_BASE}/raw/customers/customers.csv"
-S3_ORDERS="${S3_BASE}/raw/orders/orders.csv"
-S3_DELTA="${S3_BASE}/raw/delta_orders/delta_orders.csv"
+S3_CLIENTES="${S3_BASE}/bruto/clientes/clientes.csv"
+S3_PEDIDOS="${S3_BASE}/bruto/pedidos/pedidos.csv"
+S3_DELTA="${S3_BASE}/bruto/pedidos_delta/pedidos_delta.csv"
 echo "Bucket alvo: $S3_BASE"
 echo "Destinos:"
-echo "  - $S3_CUSTOMERS"
-echo "  - $S3_ORDERS"
+echo "  - $S3_CLIENTES"
+echo "  - $S3_PEDIDOS"
 echo "  - $S3_DELTA"
 
 progress "Criando bucket S3 (idempotente)..."
@@ -410,7 +410,7 @@ ensure_bucket "$BUCKET" "$REGION"
 progress "Preparando diretorio local de trabalho..."
 mkdir -p "$DATASET_DIR"
 # Limpa CSVs antigos para garantir que generate_dataset.py escreva fresh.
-rm -f "$DATASET_DIR/customers.csv" "$DATASET_DIR/orders.csv" "$DATASET_DIR/delta_orders.csv"
+rm -f "$DATASET_DIR/clientes.csv" "$DATASET_DIR/pedidos.csv" "$DATASET_DIR/pedidos_delta.csv"
 echo "WORKDIR: $WORKDIR"
 echo "DATASET_DIR: $DATASET_DIR"
 
@@ -420,21 +420,21 @@ echo "Rodando: python3 $GENERATE_PY $DATASET_DIR"
 python3 "$GENERATE_PY" "$DATASET_DIR"
 
 progress "Validando CSVs gerados (contagem de linhas)..."
-validate_csv_lines "$DATASET_DIR/customers.csv"     "$EXPECTED_CUSTOMERS_LINES" "customers.csv"
-validate_csv_lines "$DATASET_DIR/orders.csv"        "$EXPECTED_ORDERS_LINES"    "orders.csv"
-validate_csv_lines "$DATASET_DIR/delta_orders.csv"  "$EXPECTED_DELTA_LINES"     "delta_orders.csv"
+validate_csv_lines "$DATASET_DIR/clientes.csv"       "$EXPECTED_CLIENTES_LINES" "clientes.csv"
+validate_csv_lines "$DATASET_DIR/pedidos.csv"        "$EXPECTED_PEDIDOS_LINES"  "pedidos.csv"
+validate_csv_lines "$DATASET_DIR/pedidos_delta.csv"  "$EXPECTED_DELTA_LINES"    "pedidos_delta.csv"
 
 progress "Fazendo upload dos 3 CSVs em prefixos separados..."
 # aws s3 cp sobrescreve por padrao - desejado, pois aluno pode rerodar
 # o setup para "resetar" o bucket. Nao usamos sync para evitar deletar
 # objetos do aluno por engano (--delete fica fora intencionalmente).
-aws s3 cp "$DATASET_DIR/customers.csv"    "$S3_CUSTOMERS" --only-show-errors
-aws s3 cp "$DATASET_DIR/orders.csv"       "$S3_ORDERS"    --only-show-errors
-aws s3 cp "$DATASET_DIR/delta_orders.csv" "$S3_DELTA"     --only-show-errors
+aws s3 cp "$DATASET_DIR/clientes.csv"      "$S3_CLIENTES" --only-show-errors
+aws s3 cp "$DATASET_DIR/pedidos.csv"       "$S3_PEDIDOS"  --only-show-errors
+aws s3 cp "$DATASET_DIR/pedidos_delta.csv" "$S3_DELTA"    --only-show-errors
 echo "Upload concluido."
 
 progress "Validando que os 3 objetos existem no S3..."
-for s3_uri in "$S3_CUSTOMERS" "$S3_ORDERS" "$S3_DELTA"; do
+for s3_uri in "$S3_CLIENTES" "$S3_PEDIDOS" "$S3_DELTA"; do
   # Extrai key (tudo depois de s3://bucket/)
   key="${s3_uri#s3://${BUCKET}/}"
   size="$(aws s3api head-object --bucket "$BUCKET" --key "$key" --query 'ContentLength' --output text 2>/dev/null || echo "")"
@@ -457,11 +457,11 @@ echo "  Regiao:     $REGION"
 echo "  Bucket:     $S3_BASE"
 echo
 echo "  Prefixos com dados (1 CSV por entidade - padrao do Glue Crawler):"
-echo "    $S3_BASE/raw/customers/"
-echo "    $S3_BASE/raw/orders/"
-echo "    $S3_BASE/raw/delta_orders/"
+echo "    $S3_BASE/bruto/clientes/"
+echo "    $S3_BASE/bruto/pedidos/"
+echo "    $S3_BASE/bruto/pedidos_delta/"
 echo
 echo "  Proximo passo: Tarefa 2 do README - criar Glue Crawler apontando para"
-echo "    $S3_BASE/raw/"
+echo "    $S3_BASE/bruto/"
 echo "  e rodar o crawler para criar 3 tabelas no Glue Data Catalog."
 echo

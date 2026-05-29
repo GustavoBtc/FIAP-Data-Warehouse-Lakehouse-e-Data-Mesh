@@ -5,9 +5,9 @@ generate_dataset.py — gera os 3 CSVs sinteticos do trabalho final.
 O QUE FAZ
 =========
 Gera (deterministicamente, seed=42) tres arquivos CSV:
-  customers.csv     — 10.000 linhas
-  orders.csv        — 100.000 linhas
-  delta_orders.csv  — 5 linhas (3 inserts + 2 updates)
+  clientes.csv       — 10.000 linhas
+  pedidos.csv        — 100.000 linhas
+  pedidos_delta.csv  — 5 linhas (3 inserts + 2 updates)
 
 POR QUE DETERMINISTICO
 ======================
@@ -42,8 +42,8 @@ from pathlib import Path
 
 SEED = 42
 
-N_CUSTOMERS = 10_000
-N_ORDERS = 100_000
+N_CLIENTES = 10_000
+N_PEDIDOS = 100_000
 
 # 50 nomes proprios brasileiros comuns (lista ordenada — nao mexer)
 NOMES = [
@@ -110,8 +110,8 @@ CATEGORIAS = [
 
 # Faixa de datas para os pedidos (inclusive nos dois extremos).
 # 2023-01-01 ate 2024-12-31 = 731 dias.
-ORDER_DATE_START_ORDINAL = 738521  # date(2023, 1, 1).toordinal()
-ORDER_DATE_END_ORDINAL = 739251    # date(2024, 12, 31).toordinal()
+DATA_PEDIDO_INICIO_ORDINAL = 738521  # date(2023, 1, 1).toordinal()
+DATA_PEDIDO_FIM_ORDINAL = 739251     # date(2024, 12, 31).toordinal()
 
 
 # ---------------------------------------------------------------------------
@@ -139,42 +139,42 @@ def ordinal_to_iso(ordinal: int) -> str:
 # Geracao dos datasets
 # ---------------------------------------------------------------------------
 
-def gerar_customers(rng: random.Random) -> list[dict]:
+def gerar_clientes(rng: random.Random) -> list[dict]:
     """Gera 10.000 clientes deterministicamente.
 
-    Cada customer_id segue o formato C00001 .. C10000 (sequencial, nao
+    Cada id_cliente segue o formato C00001 .. C10000 (sequencial, nao
     aleatorio — facilita debug e a query do trabalho final).
 
-    A coluna birth_year (INT, 1950..2005) existe por dois motivos:
+    A coluna ano_nascimento (INT, 1950..2005) existe por dois motivos:
       1. Garante que a 1a linha do CSV (cabecalho) tem coluna numerica,
          o que faz o Glue Crawler detectar header automaticamente sem
          precisar de classifier customizado.
       2. Enriquece a query executiva (idade media do top 5).
     A ordem de chamadas rng.choice(...) NAO mudou; o randint do
-    birth_year e adicionado depois do sobrenome para nao quebrar o
-    pareto (que depende do customer_id permanecer C00001..C10000)."""
-    customers = []
-    for i in range(1, N_CUSTOMERS + 1):
+    ano_nascimento e adicionado depois do sobrenome para nao quebrar o
+    pareto (que depende do id_cliente permanecer C00001..C10000)."""
+    clientes = []
+    for i in range(1, N_CLIENTES + 1):
         cidade, uf = rng.choice(CAPITAIS)
         # ATENCAO: a ordem dos rng.* importa para reprodutibilidade.
         # Mantemos cidade/uf primeiro (mesma posicao da v1), depois
-        # nome/sobrenome/birth_year/segmento. birth_year e gerado
+        # nome/sobrenome/ano_nascimento/segmento. ano_nascimento e gerado
         # APOS sobrenome para que o ano nao "consuma" o estado do rng
         # antes do cidade/uf — preservando pareto.
         nome = rng.choice(NOMES)
         sobrenome = rng.choice(SOBRENOMES)
-        birth_year = rng.randint(1950, 2005)
+        ano_nascimento = rng.randint(1950, 2005)
         segmento = rng.choice(SEGMENTOS)
-        customers.append({
-            "customer_id": f"C{i:05d}",
+        clientes.append({
+            "id_cliente": f"C{i:05d}",
             "nome": nome,
             "sobrenome": sobrenome,
-            "birth_year": birth_year,
+            "ano_nascimento": ano_nascimento,
             "cidade": cidade,
             "estado": uf,
             "segmento": segmento,
         })
-    return customers
+    return clientes
 
 
 def construir_pesos_pareto(rng: random.Random) -> list[float]:
@@ -183,113 +183,113 @@ def construir_pesos_pareto(rng: random.Random) -> list[float]:
     clientes concentram ~80% dos pedidos. Garante que existem clientes
     'top 5' claramente distintos para a query final.
 
-    Os pesos sao bruto-aleatorios e DEPOIS ordenados por customer_id
+    Os pesos sao bruto-aleatorios e DEPOIS ordenados por id_cliente
     (ou seja, NAO ordenados por peso) — caso contrario o C00001 seria
     sempre o maior comprador, o que daria spoiler do resultado da query.
     """
-    pesos = [rng.paretovariate(1.16) for _ in range(N_CUSTOMERS)]
+    pesos = [rng.paretovariate(1.16) for _ in range(N_CLIENTES)]
     return pesos
 
 
-def gerar_orders(rng: random.Random, pesos_clientes: list[float]) -> list[dict]:
-    """Gera 100.000 pedidos. Distribuicao de customer_id segue a curva
+def gerar_pedidos(rng: random.Random, pesos_clientes: list[float]) -> list[dict]:
+    """Gera 100.000 pedidos. Distribuicao de id_cliente segue a curva
     Pareto pre-computada — o random.choices ja retorna proporcional ao
     peso, sem necessidade de normalizar."""
-    customer_ids = [f"C{i:05d}" for i in range(1, N_CUSTOMERS + 1)]
+    ids_clientes = [f"C{i:05d}" for i in range(1, N_CLIENTES + 1)]
 
-    # Sorteia todos os customer_ids de uma vez (mais rapido e
+    # Sorteia todos os ids_clientes de uma vez (mais rapido e
     # deterministicamente consistente com o estado do rng).
-    sorteados = rng.choices(customer_ids, weights=pesos_clientes, k=N_ORDERS)
+    sorteados = rng.choices(ids_clientes, weights=pesos_clientes, k=N_PEDIDOS)
 
-    orders = []
-    for i in range(1, N_ORDERS + 1):
-        cust_id = sorteados[i - 1]
+    pedidos = []
+    for i in range(1, N_PEDIDOS + 1):
+        id_cli = sorteados[i - 1]
         # Datas: ordinal aleatorio entre os dois limites (inclusivos)
-        date_ord = rng.randint(ORDER_DATE_START_ORDINAL, ORDER_DATE_END_ORDINAL)
-        order_date = ordinal_to_iso(date_ord)
+        date_ord = rng.randint(DATA_PEDIDO_INICIO_ORDINAL, DATA_PEDIDO_FIM_ORDINAL)
+        data_pedido = ordinal_to_iso(date_ord)
 
-        quantity = rng.randint(1, 10)
-        unit_price = round(rng.uniform(10.00, 1000.00), 2)
-        discount = round(rng.uniform(0.00, 0.30), 2)
-        freight = round(rng.uniform(5.00, 50.00), 2)
+        quantidade = rng.randint(1, 10)
+        preco_unitario = round(rng.uniform(10.00, 1000.00), 2)
+        desconto = round(rng.uniform(0.00, 0.30), 2)
+        frete = round(rng.uniform(5.00, 50.00), 2)
 
-        orders.append({
-            "order_id": f"O{i:06d}",
-            "customer_id": cust_id,
-            "order_date": order_date,
-            "product_category": rng.choice(CATEGORIAS),
-            "quantity": quantity,
-            "unit_price": f"{unit_price:.2f}",
-            "discount": f"{discount:.2f}",
-            "freight": f"{freight:.2f}",
+        pedidos.append({
+            "id_pedido": f"O{i:06d}",
+            "id_cliente": id_cli,
+            "data_pedido": data_pedido,
+            "categoria_produto": rng.choice(CATEGORIAS),
+            "quantidade": quantidade,
+            "preco_unitario": f"{preco_unitario:.2f}",
+            "desconto": f"{desconto:.2f}",
+            "frete": f"{frete:.2f}",
         })
-    return orders
+    return pedidos
 
 
-def gerar_delta(orders: list[dict]) -> list[dict]:
+def gerar_delta(pedidos: list[dict]) -> list[dict]:
     """Gera 5 deltas hardcoded:
-      - 3 INSERTs: O100001, O100002, O100003 (ids inexistentes em orders.csv)
-      - 2 UPDATEs: usa os order_ids dos 2 PRIMEIROS pedidos de orders.csv,
-        com discount aumentado representando ajuste pos-fechamento.
+      - 3 INSERTs: O100001, O100002, O100003 (ids inexistentes em pedidos.csv)
+      - 2 UPDATEs: usa os ids_pedido dos 2 PRIMEIROS pedidos de pedidos.csv,
+        com desconto aumentado representando ajuste pos-fechamento.
 
     Totalmente deterministico — nao usa rng. O aluno enxerga este arquivo
     como 'os 5 deltas que vieram do fim do dia'.
     """
-    o1 = orders[0]  # primeiro pedido (sera atualizado)
-    o2 = orders[1]  # segundo pedido (sera atualizado)
+    p1 = pedidos[0]  # primeiro pedido (sera atualizado)
+    p2 = pedidos[1]  # segundo pedido (sera atualizado)
 
     deltas = [
-        # 3 INSERTs — order_ids 100.001 / 002 / 003 (nao existem em orders.csv)
+        # 3 INSERTs — ids_pedido 100.001 / 002 / 003 (nao existem em pedidos.csv)
         {
-            "order_id": "O100001",
-            "customer_id": "C00001",
-            "order_date": "2024-12-31",
-            "product_category": "ELETRONICOS",
-            "quantity": "5",
-            "unit_price": "899.90",
-            "discount": "0.10",
-            "freight": "29.90",
+            "id_pedido": "O100001",
+            "id_cliente": "C00001",
+            "data_pedido": "2024-12-31",
+            "categoria_produto": "ELETRONICOS",
+            "quantidade": "5",
+            "preco_unitario": "899.90",
+            "desconto": "0.10",
+            "frete": "29.90",
         },
         {
-            "order_id": "O100002",
-            "customer_id": "C00042",
-            "order_date": "2024-12-31",
-            "product_category": "MODA",
-            "quantity": "3",
-            "unit_price": "149.00",
-            "discount": "0.05",
-            "freight": "15.00",
+            "id_pedido": "O100002",
+            "id_cliente": "C00042",
+            "data_pedido": "2024-12-31",
+            "categoria_produto": "MODA",
+            "quantidade": "3",
+            "preco_unitario": "149.00",
+            "desconto": "0.05",
+            "frete": "15.00",
         },
         {
-            "order_id": "O100003",
-            "customer_id": "C09999",
-            "order_date": "2024-12-31",
-            "product_category": "LIVROS",
-            "quantity": "2",
-            "unit_price": "59.90",
-            "discount": "0.00",
-            "freight": "12.00",
+            "id_pedido": "O100003",
+            "id_cliente": "C09999",
+            "data_pedido": "2024-12-31",
+            "categoria_produto": "LIVROS",
+            "quantidade": "2",
+            "preco_unitario": "59.90",
+            "desconto": "0.00",
+            "frete": "12.00",
         },
-        # 2 UPDATEs — mesmos order_ids do orders.csv, mas com discount alterado
+        # 2 UPDATEs — mesmos ids_pedido do pedidos.csv, mas com desconto alterado
         {
-            "order_id": o1["order_id"],
-            "customer_id": o1["customer_id"],
-            "order_date": o1["order_date"],
-            "product_category": o1["product_category"],
-            "quantity": str(o1["quantity"]),
-            "unit_price": o1["unit_price"],
-            "discount": "0.50",  # ajuste de pos-fechamento
-            "freight": o1["freight"],
+            "id_pedido": p1["id_pedido"],
+            "id_cliente": p1["id_cliente"],
+            "data_pedido": p1["data_pedido"],
+            "categoria_produto": p1["categoria_produto"],
+            "quantidade": str(p1["quantidade"]),
+            "preco_unitario": p1["preco_unitario"],
+            "desconto": "0.50",  # ajuste de pos-fechamento
+            "frete": p1["frete"],
         },
         {
-            "order_id": o2["order_id"],
-            "customer_id": o2["customer_id"],
-            "order_date": o2["order_date"],
-            "product_category": o2["product_category"],
-            "quantity": str(o2["quantity"]),
-            "unit_price": o2["unit_price"],
-            "discount": "0.45",
-            "freight": o2["freight"],
+            "id_pedido": p2["id_pedido"],
+            "id_cliente": p2["id_cliente"],
+            "data_pedido": p2["data_pedido"],
+            "categoria_produto": p2["categoria_produto"],
+            "quantidade": str(p2["quantidade"]),
+            "preco_unitario": p2["preco_unitario"],
+            "desconto": "0.45",
+            "frete": p2["frete"],
         },
     ]
     return deltas
@@ -341,55 +341,55 @@ def main() -> int:
         print(f"ERRO: {out_dir} existe mas nao e um diretorio.", file=sys.stderr)
         return 1
 
-    customers_path = out_dir / "customers.csv"
-    orders_path = out_dir / "orders.csv"
-    delta_path = out_dir / "delta_orders.csv"
+    clientes_path = out_dir / "clientes.csv"
+    pedidos_path = out_dir / "pedidos.csv"
+    delta_path = out_dir / "pedidos_delta.csv"
 
     # rng UNICO para todo o processo — cada chamada consome do mesmo
     # estado, mantendo a sequencia reprodutivel.
     rng = random.Random(SEED)
 
-    print(f"[2/5] Gerando customers.csv ({N_CUSTOMERS} linhas, seed={SEED})...")
-    customers = gerar_customers(rng)
+    print(f"[2/5] Gerando clientes.csv ({N_CLIENTES} linhas, seed={SEED})...")
+    clientes = gerar_clientes(rng)
     escrever_csv(
-        customers_path,
-        ["customer_id", "nome", "sobrenome", "birth_year", "cidade", "estado", "segmento"],
-        customers,
+        clientes_path,
+        ["id_cliente", "nome", "sobrenome", "ano_nascimento", "cidade", "estado", "segmento"],
+        clientes,
     )
 
-    print(f"[3/5] Gerando orders.csv ({N_ORDERS} linhas, seed={SEED})...")
+    print(f"[3/5] Gerando pedidos.csv ({N_PEDIDOS} linhas, seed={SEED})...")
     pesos = construir_pesos_pareto(rng)
-    orders = gerar_orders(rng, pesos)
+    pedidos = gerar_pedidos(rng, pesos)
     escrever_csv(
-        orders_path,
+        pedidos_path,
         [
-            "order_id", "customer_id", "order_date", "product_category",
-            "quantity", "unit_price", "discount", "freight",
+            "id_pedido", "id_cliente", "data_pedido", "categoria_produto",
+            "quantidade", "preco_unitario", "desconto", "frete",
         ],
-        orders,
+        pedidos,
     )
 
-    print("[4/5] Gerando delta_orders.csv (5 linhas hardcoded)...")
-    deltas = gerar_delta(orders)
+    print("[4/5] Gerando pedidos_delta.csv (5 linhas hardcoded)...")
+    deltas = gerar_delta(pedidos)
     escrever_csv(
         delta_path,
         [
-            "order_id", "customer_id", "order_date", "product_category",
-            "quantity", "unit_price", "discount", "freight",
+            "id_pedido", "id_cliente", "data_pedido", "categoria_produto",
+            "quantidade", "preco_unitario", "desconto", "frete",
         ],
         deltas,
     )
 
     print("[5/5] Calculando md5sum dos arquivos para validar reprodutibilidade...")
-    md5_customers = md5_of_file(customers_path)
-    md5_orders = md5_of_file(orders_path)
+    md5_clientes = md5_of_file(clientes_path)
+    md5_pedidos = md5_of_file(pedidos_path)
     md5_delta = md5_of_file(delta_path)
 
     print()
     print(f"OK. Arquivos gerados em {out_dir}:")
-    print(f"  customers.csv      ({N_CUSTOMERS} linhas, md5: {md5_customers})")
-    print(f"  orders.csv         ({N_ORDERS} linhas, md5: {md5_orders})")
-    print(f"  delta_orders.csv   (5 linhas, md5: {md5_delta})")
+    print(f"  clientes.csv       ({N_CLIENTES} linhas, md5: {md5_clientes})")
+    print(f"  pedidos.csv        ({N_PEDIDOS} linhas, md5: {md5_pedidos})")
+    print(f"  pedidos_delta.csv  (5 linhas, md5: {md5_delta})")
     return 0
 
 
